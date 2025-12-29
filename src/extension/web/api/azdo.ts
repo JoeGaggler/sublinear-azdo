@@ -5,6 +5,28 @@ import {
     type IHostNavigationService,
 } from 'azure-devops-extension-api';
 
+export async function restGet(url: string, bearertoken: string): Promise<any> {
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Authorization": `Bearer ${bearertoken}`,
+            "Content-Type": "application/json",
+            "X-Bearer": bearertoken,
+        }
+    });
+    if (response.ok) {
+        const data = await response.json();
+        const ctok = response.headers.get("x-ms-continuationtoken");
+        if (ctok) {
+            console.log("Continuation token:", ctok);
+        }
+        // console.log(data);
+        return data;
+    } else {
+        console.log("Error fetching azdo data", response.statusText);
+    }
+}
+
 //
 // Session
 //
@@ -14,6 +36,7 @@ export interface SessionInfo {
     bearerToken: string;
     appToken: string;
     refreshAfter: number;
+    organization: string;
 }
 
 export const zeroSessionInfo: SessionInfo =
@@ -21,30 +44,43 @@ export const zeroSessionInfo: SessionInfo =
     isValid: false,
     bearerToken: "",
     appToken: "",
-    refreshAfter: 0
+    refreshAfter: 0,
+    organization: "",
 };
 
 export async function refreshSessionInfo(): Promise<SessionInfo | null> {
     try {
         let bearerToken = await SDK.getAccessToken();
         let appToken = await SDK.getAppToken();
-        let conf = SDK.getConfiguration();
-        if (conf) {
-            console.log("conf:", conf);
-        }
+        let host = SDK.getHost()
+        console.log("Host:", host);
 
         let seconds = 60;
         return {
             isValid: true,
             bearerToken: bearerToken,
             appToken: appToken,
-            refreshAfter: Date.now() + (1000 * seconds)
+            refreshAfter: Date.now() + (1000 * seconds),
+            organization: host.name,
         };
     }
     catch (err) {
         console.error("Error refreshing session info", err);
         return null;
     }
+}
+
+export interface ConnectionData {
+    authenticatedUser: {
+        id: string;
+        customDisplayName: string;
+    }
+}
+
+export async function getConnectionData(session: SessionInfo): Promise<ConnectionData | null> {
+    let data = await restGet(`https://dev.azure.com/${session.organization}/_apis/connectionData?api-version=7.1-preview.1`, session.bearerToken);
+    console.log("getConnectionData: ", data);
+    return data;
 }
 
 //

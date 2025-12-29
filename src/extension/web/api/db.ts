@@ -8,6 +8,9 @@ export const main_members_document_id = "members";
 // collection of each member
 export const members_collection_id = "members";
 
+// collection for personal user data
+export const my_collection_id = "mine";
+export const my_connectiondata_document_id = "connection_data";
 
 export interface MainMembersStoredDocument extends StoredDocument {
     members: Members;
@@ -19,6 +22,10 @@ export interface MainMembersStoredDocument extends StoredDocument {
 
 export function makeDatabase(): Database {
     return {
+        myself: {
+            id: "",
+            displayName: ""
+        },
         members: {
             items: []
         }
@@ -26,7 +33,13 @@ export function makeDatabase(): Database {
 }
 
 export interface Database {
+    myself: Myself;
     members: Members;
+}
+
+export interface Myself {
+    id: string;
+    displayName: string;
 }
 
 export interface Members {
@@ -43,7 +56,7 @@ export interface Member {
 /// Member functions
 ///
 
-export async function loadMembers(accessToken: string): Promise<MainMembersStoredDocument | null> {
+export async function loadMembers(db: Database, accessToken: string): Promise<MainMembersStoredDocument | null> {
     let membersDoc = await Azdo.getSharedDocument<MainMembersStoredDocument>(
         main_collection_id,
         main_members_document_id,
@@ -71,11 +84,12 @@ export async function loadMembers(accessToken: string): Promise<MainMembersStore
     }
 
     console.log("loadMembers: loaded", membersDoc);
+    db.members = membersDoc.members;
     return membersDoc;
 }
 
-export async function upsertMember(member: Member, accessToken: string): Promise<MainMembersStoredDocument | null> {
-    let membersDoc = await loadMembers(accessToken);
+export async function upsertMember(db: Database, member: Member, accessToken: string): Promise<MainMembersStoredDocument | null> {
+    let membersDoc = await loadMembers(db, accessToken);
     if (!membersDoc) {
         console.warn("upsertMember: failed to obtain document");
         return null;
@@ -88,8 +102,8 @@ export async function upsertMember(member: Member, accessToken: string): Promise
         console.log("upsertMember: found member", prev);
 
         let changed = false;
-        if (next.displayName != prev.displayName) { changed = true; }
-        if (next.timestamp != prev.timestamp) { changed = true; }
+        if (next.displayName != prev.displayName) { changed = true; console.log("upsertMember: displayName changed", prev.displayName, next.displayName); }
+        if (next.timestamp != prev.timestamp) { changed = true; console.log("upsertMember: timestamp changed", prev.timestamp, next.timestamp); }
         if (!changed) { return membersDoc; }
 
         membersDoc.members.items[i] = next;
@@ -109,5 +123,36 @@ export async function upsertMember(member: Member, accessToken: string): Promise
         return null;
     }
 
-    return membersDoc;
+    db.members = newMembersDoc.members;
+    return newMembersDoc;
+}
+
+export async function deleteMember(db: Database, memberId: string, accessToken: string): Promise<MainMembersStoredDocument | null> {
+    let membersDoc = await loadMembers(db, accessToken);
+    if (!membersDoc) {
+        console.warn("deleteMember: failed to obtain document");
+        return null;
+    }
+
+    let i = membersDoc.members.items.findIndex((m) => m.id === memberId);
+    if (i === -1) {
+        console.log("deleteMember: member not found", memberId);
+        return membersDoc;
+    }
+
+    console.log("deleteMember: deleting member", membersDoc.members.items[i]);
+    membersDoc.members.items.splice(i, 1);
+
+    let newMembersDoc = await Azdo.editSharedDocument(
+        main_collection_id,
+        membersDoc,
+        accessToken
+    )
+    if (!newMembersDoc) {
+        console.error("deleteMember: failed to edit document");
+        return null;
+    }
+
+    db.members = newMembersDoc.members;
+    return newMembersDoc;
 }
