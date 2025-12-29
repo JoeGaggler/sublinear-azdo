@@ -1,10 +1,9 @@
+import React from 'react'
 import ReactDOM from 'react-dom'
 import { SurfaceBackground, SurfaceContext } from "azure-devops-ui/Surface";
 import * as SDK from 'azure-devops-extension-sdk';
-import App from './app.tsx'
-import type { AppProps, AppSingleton } from './app.tsx'
-
-console.log("sublinear home main loading");
+import App, { type AppProps, type AppSingleton } from './app.tsx'
+import * as Azdo from '../api/azdo.ts';
 
 const appSingleton: AppSingleton = {};
 
@@ -13,41 +12,21 @@ SDK.init();
 let render = (p: AppProps) => {
   console.log("render", p);
   ReactDOM.render(
-    <SurfaceContext.Provider value={{ background: SurfaceBackground.neutral }}>
-      <App appToken={p.appToken} bearerToken={p.bearerToken} singleton={appSingleton} />
-    </SurfaceContext.Provider>,
+    <React.StrictMode>
+      <SurfaceContext.Provider value={{ background: SurfaceBackground.neutral }}>
+        <App sessionInfo={p.sessionInfo} singleton={appSingleton} />
+      </SurfaceContext.Provider>
+    </React.StrictMode>,
     document.getElementById('extension_root_div')
   );
 }
 
-let refreshMs = 1000 * 60 * 5; // 5 minutes
+await SDK.ready();
 
-let refreshToken = () => {
-  console.log("refreshToken");
-  SDK.getAccessToken().then((token) => {
-    console.log("Refreshed token", token);
-    render({ bearerToken: token, appToken: "TODO_REFRESH_APP_TOKEN", singleton: appSingleton });
-    setTimeout(refreshToken, refreshMs);
-  }).catch((err) => {
-    console.error("Error getting access token", err);
-  });
+let sessionInfo = await Azdo.refreshSessionInfo();
+if (!sessionInfo) {
+  throw new Error("Failed to get initial session info");
 }
+render({ sessionInfo: sessionInfo, singleton: appSingleton });
 
-SDK.ready().then(() => {
-  console.log("SDK is ready");
-  SDK.getAppToken().then((a) => {
-    console.log("AppToken is ready");
-    console.log(a);
-    SDK.getAccessToken().then((b) => {
-      console.log("BearerToken is ready");
-      console.log(b);
-
-      let conf = SDK.getConfiguration();
-      console.log("conf", conf);
-      render({ bearerToken: b, appToken: a, singleton: appSingleton });
-      SDK.notifyLoadSucceeded();
-
-      setTimeout(refreshToken, refreshMs);
-    });
-  });
-});
+SDK.notifyLoadSucceeded();

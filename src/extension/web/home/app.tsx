@@ -3,32 +3,27 @@ import { Card } from "azure-devops-ui/Card";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 import { Page } from "azure-devops-ui/Page";
 import React from "react";
-import * as SDK from 'azure-devops-extension-sdk';
-import type { IHostNavigationService } from 'azure-devops-extension-api';
 import * as Azdo from '../api/azdo.ts';
 
 function App(p: AppProps) {
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
+  const [route, setRoute] = useState<AppRoute>({ view: "loading" })
 
-  const _appToken = p.appToken
-  if (!_appToken) {
-    console.error("No app token provided");
+  // HACK: force rerendering for server sync
+  const [pollHack, setPollHack] = React.useState(Math.random());
+  React.useEffect(() => { poll(); }, [pollHack]);
+
+  async function navTo(route: AppRoute) {
+    console.log("nav: ", route);
+    let nav = await Azdo.getNavService();
+    if (route.title) {
+      nav.setDocumentTitle(route.title);
+    }
+    if (route.hash) {
+      nav.setHash(route.hash);
+    }
+    setRoute(route);
   }
-
-  async function blah() {
-    await Azdo.getSharedDocument("a", "d", p.bearerToken);
-
-    let x1 = await SDK.getService<IHostNavigationService>("ms.vss-features.host-navigation-service");
-    x1.setQueryParams({ foo: "bar" });
-    x1.setHash("myhashvalue");
-    let x3 = await x1.getPageNavigationElements();
-    console.log("Navigation page route:", x3);
-    let x2 = await x1.getHash();
-    console.log("Navigation hash:", x2);
-    let x4 = await x1.getQueryParams();
-    console.log("Navigation query params:", x4);
-  }
-  blah();
 
   const commmandBarItems = [
     {
@@ -38,7 +33,7 @@ function App(p: AppProps) {
       id: "testCreate",
       important: true,
       onActivate: () => {
-        alert("This would normally trigger a modal popup");
+        navTo({ view: "home", title: `sublinear - ${Math.random()}` });
       },
       text: "Action",
       tooltipProps: {
@@ -62,43 +57,76 @@ function App(p: AppProps) {
   // initialize the app
   React.useEffect(() => { init() }, []);
   async function init() {
-    setTimeout(() => {
-      setIsLoaded(true);
-    }, 3000);
+    const nav = await Azdo.getNavService();
+    const query = await nav.getQueryParams();
+    const hash = await nav.getHash();
+    console.log("init: ", query, hash);
+    setRoute({ view: "home" }); // TODO: route via query/hash
+
+    setInterval(() => { setPollHack(Math.random()); }, 1000);
   }
 
-  if (!isLoaded) {
-    return (
-      <Page>
-        <Header
-          title={"Loading"}
-          titleSize={TitleSize.Large}
-          commandBarItems={commmandBarItems} />
-        <div className="page-content page-content-top">
-          <Card>Loading</Card>
-        </div>
-      </Page>
-    )
-  } else {
-    return (
-      <Page>
-        <Header
-          title={"Sublinear"}
-          titleSize={TitleSize.Large}
-          commandBarItems={commmandBarItems} />
-        <div className="page-content page-content-top">
-          <Card>Page content</Card>
-        </div>
+  async function poll() {
+    if (Date.now() > sessionInfo.refreshAfter) {
+      console.log("poll: refresh token", sessionInfo.refreshAfter);
+      let newSessionInfo = await Azdo.refreshSessionInfo();
+      if (!newSessionInfo) {
+        console.error("poll: refresh token failed");
+      } else {
+        setSessionInfo(newSessionInfo);
+        console.log("poll: refreshed token", newSessionInfo);
+      }
+    }
+  }
 
-        <Header
-          title={"Teams"}
-          titleSize={TitleSize.Large}
-          commandBarItems={commmandBarItems} />
-        <div className="page-content page-content-top">
-          <Card>TODO: Teams</Card>
-        </div>
-      </Page>
-    )
+  switch (route.view) {
+    case "loading": {
+      return (
+        <Page>
+          <Header
+            title={"Loading"}
+            titleSize={TitleSize.Large}
+            commandBarItems={commmandBarItems} />
+          <div className="page-content page-content-top">
+            <Card>Loading</Card>
+          </div>
+        </Page>
+      )
+    }
+    case "home": {
+      return (
+        <Page>
+          <Header
+            title={"Sublinear"}
+            titleSize={TitleSize.Large}
+            commandBarItems={commmandBarItems} />
+          <div className="page-content page-content-top">
+            <Card>Page content</Card>
+          </div>
+
+          <Header
+            title={"Teams"}
+            titleSize={TitleSize.Large}
+            commandBarItems={commmandBarItems} />
+          <div className="page-content page-content-top">
+            <Card>TODO: Teams</Card>
+          </div>
+        </Page>
+      )
+    }
+    default: {
+      return (
+        <Page>
+          <Header
+            title={"Error"}
+            titleSize={TitleSize.Large}
+            commandBarItems={commmandBarItems} />
+          <div className="page-content page-content-top">
+            <Card>Unknown view: {route.view}</Card>
+          </div>
+        </Page>
+      )
+    }
   }
 }
 
@@ -106,9 +134,14 @@ export interface AppSingleton {
 }
 
 export interface AppProps {
-  bearerToken: string;
-  appToken: string;
+  sessionInfo: Azdo.SessionInfo;
   singleton: AppSingleton;
+}
+
+export interface AppRoute {
+  view: string;
+  hash?: string;
+  title?: string;
 }
 
 export default App

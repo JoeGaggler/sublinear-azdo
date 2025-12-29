@@ -1,5 +1,62 @@
+
 import * as SDK from 'azure-devops-extension-sdk';
-import { type IExtensionDataService } from 'azure-devops-extension-api';
+import {
+    type IExtensionDataService,
+    type IHostNavigationService,
+} from 'azure-devops-extension-api';
+
+//
+// Session
+//
+
+export interface SessionInfo {
+    isValid: boolean;
+    bearerToken: string;
+    appToken: string;
+    refreshAfter: number;
+}
+
+
+export const zeroSessionInfo: SessionInfo =
+{
+    isValid: false,
+    bearerToken: "",
+    appToken: "",
+    refreshAfter: 0
+};
+
+export async function refreshSessionInfo(): Promise<SessionInfo | null> {
+    try {
+        let bearerToken = await SDK.getAccessToken();
+        let appToken = await SDK.getAppToken();
+        let conf = SDK.getConfiguration();
+        if (conf) {
+            console.log("conf:", conf);
+        }
+
+        let seconds = 60;
+        return {
+            isValid: true,
+            bearerToken: bearerToken,
+            appToken: appToken,
+            refreshAfter: Date.now() + (1000 * seconds)
+        };
+    }
+    catch (err) {
+        console.error("Error refreshing session info", err);
+        return null;
+    }
+}
+
+//
+// Services
+//
+
+export async function getNavService(): Promise<IHostNavigationService> { return await SDK.getService<IHostNavigationService>("ms.vss-features.host-navigation-service"); }
+
+//
+// Shared Document APIs
+//
 
 export interface StoredDocument {
     id: string;
