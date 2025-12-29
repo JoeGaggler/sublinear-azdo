@@ -4,10 +4,12 @@ import { Header, TitleSize } from "azure-devops-ui/Header";
 import { Page } from "azure-devops-ui/Page";
 import React from "react";
 import * as Azdo from '../api/azdo.ts';
+import * as db from '../api/db.ts';
 
 function App(p: AppProps) {
   const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
   const [route, setRoute] = useState<AppRoute>({ view: "loading" })
+  const [database, setDatabase] = useState<db.Database>(db.makeDatabase());
 
   // HACK: force rerendering for server sync
   const [pollHack, setPollHack] = React.useState(Math.random());
@@ -57,11 +59,46 @@ function App(p: AppProps) {
   // initialize the app
   React.useEffect(() => { init() }, []);
   async function init() {
+
+    let memDoc = await db.loadMembers(sessionInfo.bearerToken);
+    if (memDoc) {
+      setDatabase({
+        ...database,
+        members: memDoc.members
+      });
+    } else {
+      console.error("init: failed to load members document");
+    }
+
+    let memDoc2 = await db.upsertMember({
+      id: "user_1",
+      displayName: "User One",
+      timestamp: Date.now()
+    }, sessionInfo.bearerToken);
+    if (memDoc2) {
+      console.log("init: upserted member", memDoc2);
+      setDatabase({
+        ...database,
+        members: memDoc2.members
+      });
+    } else {
+      console.error("init: failed to upsert member");
+    }
+
+    console.log("uuid:", self.crypto.randomUUID());
+    console.log("uuid:", self.crypto.randomUUID());
+    console.log("uuid:", self.crypto.randomUUID());
+
     const nav = await Azdo.getNavService();
     const query = await nav.getQueryParams();
     const hash = await nav.getHash();
     console.log("init: ", query, hash);
     setRoute({ view: "home" }); // TODO: route via query/hash
+
+    // Azdo.getSharedDocument(
+    //   db.pointer_collection_id, 
+    //   db.members_document_id, 
+    //   sessionInfo.bearerToken);
 
     setInterval(() => { setPollHack(Math.random()); }, 1000);
   }
@@ -110,6 +147,14 @@ function App(p: AppProps) {
             commandBarItems={commmandBarItems} />
           <div className="page-content page-content-top">
             <Card>TODO: Teams</Card>
+          </div>
+
+          <Header
+            title={"Members"}
+            titleSize={TitleSize.Large}
+            commandBarItems={commmandBarItems} />
+          <div className="page-content page-content-top">
+            <Card>Count: {database.members.items.length}</Card>
           </div>
         </Page>
       )

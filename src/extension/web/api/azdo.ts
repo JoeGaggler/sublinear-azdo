@@ -16,7 +16,6 @@ export interface SessionInfo {
     refreshAfter: number;
 }
 
-
 export const zeroSessionInfo: SessionInfo =
 {
     isValid: false,
@@ -69,7 +68,7 @@ export async function getSharedDocument<T extends StoredDocument>(colId: string,
     try {
         const doc = await dataManager.getDocument(colId, docId);
         console.log("get doc (shared): ", colId, docId, doc);
-        return doc;
+        return doc as T;
     }
     catch {
         console.warn("get doc (shared): ", colId, docId, null);
@@ -97,7 +96,7 @@ export async function editSharedDocument<T extends StoredDocument>(colId: string
     try {
         const newdoc = await dataManager.updateDocument(colId, document);
         console.log("edit doc (shared): ", colId, document.id, newdoc);
-        return newdoc;
+        return newdoc as T;
     }
     catch {
         console.warn("edit doc (shared): ", colId, document.id, null);
@@ -111,7 +110,7 @@ export async function upsertSharedDocument<T extends StoredDocument>(colId: stri
     try {
         const newdoc = await dataManager.setDocument(colId, document);
         console.log("upsert doc (shared): ", colId, document.id, newdoc);
-        return newdoc;
+        return newdoc as T;
     }
     catch {
         console.warn("upsert doc (shared): ", colId, document.id, null);
