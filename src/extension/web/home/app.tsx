@@ -4,7 +4,7 @@ import { Header, TitleSize } from "azure-devops-ui/Header";
 import { Page } from "azure-devops-ui/Page";
 import { Button } from "azure-devops-ui/Button";
 import { Panel } from "azure-devops-ui/Panel";
-import MyTextField from '../controls/textfield.tsx';
+import NewTeamPanel from '../controls/newteampanel.tsx';
 import React from "react";
 import * as Azdo from '../api/azdo.ts';
 import * as db from '../api/db.ts';
@@ -130,7 +130,18 @@ function App(p: AppProps) {
                             <Panel
                                 onDismiss={() => setShowPanel(false)}>
                                 <div>
-                                    <MyTextField />
+                                    <NewTeamPanel
+                                        onCommit={
+                                            async (code: string, name: string) => {
+                                                console.log("New team:", code, name);
+                                                setShowPanel(false);
+                                            }
+                                        }
+                                        onDismiss={
+                                            async () => setShowPanel(false)
+                                        }
+                                        initialCode="ORG"
+                                        initialName="My Organization" />
                                 </div>
                                 <div>
                                     <Button onClick={() => setShowPanel(false)}>Close</Button>
@@ -149,7 +160,22 @@ function App(p: AppProps) {
                     <Header
                         title={"Teams"}
                         titleSize={TitleSize.Large}
-                        commandBarItems={commmandBarItems} />
+                        commandBarItems={[
+                            {
+                                iconProps: {
+                                    iconName: "Add"
+                                },
+                                id: "addTeamButton",
+                                important: true,
+                                onActivate: () => {
+                                    setShowPanel(true);
+                                },
+                                text: "Add",
+                                tooltipProps: {
+                                    text: "Add team"
+                                },
+                            }
+                        ]} />
                     <div className="page-content page-content-top">
                         <Card>TODO: Teams</Card>
                     </div>
@@ -179,7 +205,6 @@ function App(p: AppProps) {
                                                 console.error("failed to upsert member");
                                             }
                                             setDatabase({ ...database });
-                                            setShowPanel(true);
                                         })
                                     },
                                     text: "Add",
