@@ -1,6 +1,4 @@
 import { useState } from 'react'
-// import reactLogo from './assets/react.svg'
-// import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
@@ -13,6 +11,15 @@ function App() {
       </p>
     </>
   )
+}
+
+export interface AppSingleton {
+}
+
+export interface AppProps {
+    bearerToken: string;
+    appToken: string;
+    singleton: AppSingleton;
 }
 
 export default App

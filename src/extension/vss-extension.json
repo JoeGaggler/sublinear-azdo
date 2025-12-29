@@ -1,0 +1,121 @@
+{
+  "manifestVersion": 1,
+  "id": "sublinear",
+  "version": "0.1.34",
+  "name": "Sublinear",
+  "description": "Sublinear",
+  "publisher": "pingmint",
+  "categories": [
+    "Azure Repos",
+    "Azure Boards",
+    "Azure Pipelines"
+  ],
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "icons": {
+    "default": "images/sublinear-icon.png"
+  },
+  "contributions": [
+    {
+      "id": "visibility",
+      "type": "ms.vss-web.feature",
+      "description": "Enable Sublinear in the hub collection",
+      "targets": [
+        "ms.vss-web.managed-features"
+      ],
+      "properties": {
+        "name": "Enable Sublinear",
+        "userConfigurable": true,
+        "hostConfigurable": true
+      }
+    },
+    {
+      "id": "hub-group",
+      "type": "ms.vss-web.hub-group",
+      "description": "Sublinear",
+      "targets": [
+        "ms.vss-web.project-hub-groups-collection"
+      ],
+      "properties": {
+        "name": "Sublinear",
+        "order": 313,
+        "icon": "images/hub-group.png"
+      }
+    },
+    {
+      "id": "home",
+      "type": "ms.vss-web.hub",
+      "description": "Sublinear Home",
+      "targets": [
+        ".hub-group"
+      ],
+      "properties": {
+        "name": "Home",
+        "order": 1,
+        "icon": "images/hub-group.png",
+        "uri": "dist/web/home/index.html"
+      },
+      "constraints": [
+        {
+          "name": "Feature",
+          "properties": {
+            "featureId": "pingmint.sublinear.visibility"
+          }
+        }
+      ]
+    },
+    {
+      "id": "home2",
+      "type": "ms.vss-web.hub",
+      "description": "Sublinear Home",
+      "targets": [
+        ".hub-group"
+      ],
+      "properties": {
+        "name": "Home 2",
+        "order": 1,
+        "icon": "images/hub-group.png",
+        "uri": "dist/web/home/index.html"
+      },
+      "constraints": [
+        {
+          "name": "Feature",
+          "properties": {
+            "featureId": "pingmint.sublinear.visibility"
+          }
+        }
+      ]
+    }
+  ],
+  "scopes": [
+    "vso.build",
+    "vso.build_execute",
+    "vso.code",
+    "vso.code_status",
+    "vso.code_write",
+    "vso.graph",
+    "vso.identity",
+    "vso.pipelineresources_use",
+    "vso.profile",
+    "vso.project",
+    "vso.release",
+    "vso.release_manage",
+    "vso.work",
+    "vso.work_write"
+  ],
+  "files": [
+    {
+      "path": "dist",
+      "addressable": true,
+      "packagePath": "dist"
+    },
+    {
+      "path": "images",
+      "addressable": true,
+      "packagePath": "images"
+    }
+  ]
+}
