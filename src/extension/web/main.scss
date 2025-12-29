@@ -1,2 +1,20 @@
 @use "../node_modules/azure-devops-ui/Core/override.scss" as *;
 @use "../node_modules/azure-devops-ui/Core/core.scss" as azdo;
+
+:root {
+    font-family: azdo.$fontFamily;
+    margin: 0px;
+    padding: 0px;
+}
+
+body {
+    margin: 0px;
+    padding: 0px;
+}
+
+#extension_root_div {
+    margin: 0px;
+    padding: 0px;
+    background-color: azdo.$neutral-2;
+    width: 100%;
+}
