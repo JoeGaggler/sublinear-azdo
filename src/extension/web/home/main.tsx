@@ -1,9 +1,8 @@
 import ReactDOM from 'react-dom'
 import { SurfaceBackground, SurfaceContext } from "azure-devops-ui/Surface";
 import * as SDK from 'azure-devops-extension-sdk';
-import App from './index.tsx'
-import type { AppProps, AppSingleton } from './index.tsx'
-
+import App from './app.tsx'
+import type { AppProps, AppSingleton } from './app.tsx'
 
 console.log("sublinear home main loading");
 

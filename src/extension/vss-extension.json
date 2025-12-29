@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "sublinear",
-  "version": "0.1.69",
+  "version": "0.1.92",
   "name": "Sublinear",
   "description": "Sublinear",
   "publisher": "pingmint",
@@ -56,27 +56,6 @@
         "name": "Home",
         "order": 1,
         "uri": "dist/web/home/index.html"
-      },
-      "constraints": [
-        {
-          "name": "Feature",
-          "properties": {
-            "featureId": "pingmint.sublinear.visibility"
-          }
-        }
-      ]
-    },
-    {
-      "id": "teams",
-      "type": "ms.vss-web.hub",
-      "description": "Teams",
-      "targets": [
-        ".hub-group"
-      ],
-      "properties": {
-        "name": "Teams",
-        "order": 1,
-        "uri": "dist/web/teams/index.html"
       },
       "constraints": [
         {

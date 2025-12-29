@@ -17,8 +17,7 @@ export default defineConfig({
     cssMinify: 'lightningcss',
     rollupOptions: {
       input: {
-        home: './web/home/index.html',
-        teams: './web/teams/index.html'
+        home: './web/home/index.html'
       },
     }
   }
