@@ -22,10 +22,6 @@ export interface MainMembersStoredDocument extends StoredDocument {
 
 export function makeDatabase(): Database {
     return {
-        myself: {
-            id: "",
-            displayName: ""
-        },
         members: {
             items: []
         }
@@ -33,7 +29,7 @@ export function makeDatabase(): Database {
 }
 
 export interface Database {
-    myself: Myself;
+    myself?: Myself;
     members: Members;
 }
 
@@ -50,6 +46,23 @@ export interface Member {
     id: string;
     displayName: string;
     timestamp: number;
+}
+
+// 
+// Myself functions
+//
+
+export async function loadMyself(db: Database, session: Azdo.SessionInfo): Promise<Myself | null> {
+    let data = await Azdo.getConnectionData(session);
+    if (!data) { return null; }
+    
+    let actualUser = data.authenticatedUser;
+    let myself: Myself = {
+        id: actualUser.id,
+        displayName: actualUser.customDisplayName
+    };
+    db.myself = myself;
+    return myself;
 }
 
 ///

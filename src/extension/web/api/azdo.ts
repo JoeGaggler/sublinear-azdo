@@ -70,6 +70,10 @@ export async function refreshSessionInfo(): Promise<SessionInfo | null> {
     }
 }
 
+//
+// Connection Data
+//
+
 export interface ConnectionData {
     authenticatedUser: {
         id: string;
