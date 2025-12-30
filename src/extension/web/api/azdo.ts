@@ -102,23 +102,59 @@ export interface StoredDocument {
     __etag?: number;
 }
 
-export async function getSharedDocument<T extends StoredDocument>(colId: string, docId: string, accessToken: string): Promise<T | null> {
+export async function getOrCreateSharedDocument<TDoc extends StoredDocument>(
+    cid: string,
+    did: string,
+    blank: TDoc,
+    setter: (doc: TDoc) => void,
+    session: SessionInfo
+): Promise<TDoc | null> {
+    let doc = await getSharedDocument<TDoc>(
+        cid,
+        did,
+        session
+    );
+    if (!doc) {
+        console.log("loadDocument: does not exist yet");
+        doc = {
+            ...blank,
+            id: did, // in case the caller forgot
+        }
+
+        let newDoc = await newSharedDocument(
+            cid,
+            doc,
+            session
+        )
+        if (!newDoc) {
+            console.error("loadDocument: failed to create document");
+            return null;
+        }
+        doc = newDoc;
+    }
+
+    console.log("loadHuddles: loaded", doc);
+    setter(doc);
+    return doc;
+}
+
+export async function getSharedDocument<T extends StoredDocument>(colId: string, docId: string, session: SessionInfo): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
-    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
+    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
         const doc = await dataManager.getDocument(colId, docId);
         console.log("get doc (shared): ", colId, docId, doc);
         return doc as T;
     }
-    catch {
-        console.warn("get doc (shared): ", colId, docId, null);
+    catch(e) {
+        console.warn("get doc (shared): ", colId, docId, e);
         return null;
     }
 }
 
-export async function newSharedDocument<T extends StoredDocument>(colId: string, document: T, accessToken: string): Promise<T | null> {
+export async function newSharedDocument<T extends StoredDocument>(colId: string, document: T, session: SessionInfo): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
-    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
+    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
         const newdoc = await dataManager.createDocument(colId, document);
         console.log("new doc (shared): ", colId, document.id, newdoc);
@@ -130,9 +166,9 @@ export async function newSharedDocument<T extends StoredDocument>(colId: string,
     }
 }
 
-export async function editSharedDocument<T extends StoredDocument>(colId: string, document: T, accessToken: string): Promise<T | null> {
+export async function editSharedDocument<T extends StoredDocument>(colId: string, document: T, session: SessionInfo): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
-    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
+    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
         const newdoc = await dataManager.updateDocument(colId, document);
         console.log("edit doc (shared): ", colId, document.id, newdoc);
@@ -144,9 +180,9 @@ export async function editSharedDocument<T extends StoredDocument>(colId: string
     }
 }
 
-export async function upsertSharedDocument<T extends StoredDocument>(colId: string, document: T, accessToken: string): Promise<T | null> {
+export async function upsertSharedDocument<T extends StoredDocument>(colId: string, document: T, session: SessionInfo): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
-    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
+    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
         const newdoc = await dataManager.setDocument(colId, document);
         console.log("upsert doc (shared): ", colId, document.id, newdoc);
@@ -158,9 +194,9 @@ export async function upsertSharedDocument<T extends StoredDocument>(colId: stri
     }
 }
 
-export async function deleteSharedDocument(colId: string, docId: string, accessToken: string): Promise<boolean> {
+export async function deleteSharedDocument(colId: string, docId: string, session: SessionInfo): Promise<boolean> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
-    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, accessToken);
+    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
         await dataManager.deleteDocument(colId, docId);
         console.log("delete doc (shared): ", colId, docId, true);

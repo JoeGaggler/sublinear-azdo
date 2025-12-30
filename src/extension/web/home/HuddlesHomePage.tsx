@@ -1,17 +1,18 @@
 import * as Azdo from '../api/azdo.ts';
 import * as Util from '../api/util.ts';
+import * as Db from '../api/db.ts';
 import type { AppNav } from './app.tsx';
 import { CreateHuddlePanel } from './CreateHuddlePanel.tsx';
 
-import React, { useState } from 'react'
+import React from 'react'
 
 import { Card } from "azure-devops-ui/Card";
 import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
-    const [_sessionInfo, _setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
-    const [isAddingHuddle, setIsAddingHuddle] = useState<boolean>(false);
+    const [sessionInfo, _setSessionInfo] = React.useState<Azdo.SessionInfo>(p.sessionInfo);
+    const [isAddingHuddle, setIsAddingHuddle] = React.useState<boolean>(false);
 
     // HACK: force rerendering for server sync
     const [pollHack, setPollHack] = React.useState(Math.random());
@@ -20,6 +21,23 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
     React.useEffect(() => { init() }, []);
     async function init() {
         console.log("HuddlesHomePage init");
+
+        try {
+            let doc = await Azdo.getOrCreateSharedDocument<Db.MainHuddlesStoredDocument>(
+                Db.main_collection_id,
+                Db.main_huddles_document_id,
+                Db.makeEmptyHuddlesStoredDocument(),
+                Db.syncHuddles(p.database),
+                sessionInfo)
+            if (doc) {
+                console.log("have doc", doc)
+            } else {
+                console.error("no doc")
+            }
+        }
+        catch {
+            console.error("error doc")
+        }
 
         const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
         return () => { clearInterval(interval_id); };
@@ -34,6 +52,9 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
     }
 
     async function onCommitNewHuddle() {
+        // Azdo.getSharedDocument(
+
+        // )
         setIsAddingHuddle(false);
     }
 
@@ -78,6 +99,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
 
 export interface HuddlesHomePageProps {
     appNav: AppNav;
+    database: Db.Database;
     sessionInfo: Azdo.SessionInfo;
 }
 

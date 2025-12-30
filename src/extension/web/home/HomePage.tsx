@@ -1,5 +1,6 @@
 import * as Azdo from '../api/azdo.ts';
 import type { AppNav } from './app.tsx';
+import type { Database } from '../api/db.ts';
 
 import React, { useState } from 'react'
 
@@ -54,6 +55,7 @@ function HomePage(p: HomePageProps) {
 
 export interface HomePageProps {
     appNav: AppNav;
+    database: Database;
     sessionInfo: Azdo.SessionInfo;
 }
 

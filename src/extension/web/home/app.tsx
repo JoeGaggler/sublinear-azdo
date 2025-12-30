@@ -70,7 +70,7 @@ function App(p: AppProps) {
     // initialize the app
     React.useEffect(() => { init() }, []);
     async function init() {
-        let memDoc = await db.loadMembers(database, sessionInfo.bearerToken);
+        let memDoc = await db.loadMembers(database, sessionInfo);
         if (memDoc) {
             setDatabase({ ...database });
         } else {
@@ -134,6 +134,7 @@ function App(p: AppProps) {
             return (
                 <HomePage
                     appNav={createAppNav(route)}
+                    database={database}
                     sessionInfo={sessionInfo}
                 />
             )
@@ -142,6 +143,7 @@ function App(p: AppProps) {
             return (
                 <HuddlesHomePage
                     appNav={createAppNav(route)}
+                    database={database}
                     sessionInfo={sessionInfo}
                 />
             )

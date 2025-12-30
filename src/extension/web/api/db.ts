@@ -4,6 +4,7 @@ import type { StoredDocument } from "./azdo";
 // collection of top level documents
 export const main_collection_id = "main";
 export const main_members_document_id = "members";
+export const main_huddles_document_id = "huddles";
 
 // collection of each member
 export const members_collection_id = "members";
@@ -22,15 +23,15 @@ export interface MainMembersStoredDocument extends StoredDocument {
 
 export function makeDatabase(): Database {
     return {
-        members: {
-            items: []
-        }
+        members: { items: [] },
+        huddles: { items: [] }
     };
 }
 
 export interface Database {
     myself?: Myself;
     members: Members;
+    huddles: Huddles;
 }
 
 export interface Myself {
@@ -48,6 +49,37 @@ export interface Member {
     timestamp: number;
 }
 
+//
+// Huddles
+//
+
+export interface MainHuddlesStoredDocument extends StoredDocument {
+    huddles: Huddles;
+}
+
+export interface Huddles {
+    items: Huddle[]
+}
+
+export interface Huddle {
+    name: string
+}
+
+export function makeEmptyHuddlesStoredDocument(): MainHuddlesStoredDocument {
+    return {
+        id: main_huddles_document_id,
+        huddles: {
+            items: []
+        }
+    }
+}
+
+export function syncHuddles(db: Database): ((d: MainHuddlesStoredDocument) => void) {
+    return (d: MainHuddlesStoredDocument) => {
+        db.huddles = d.huddles
+    };
+}
+
 // 
 // Myself functions
 //
@@ -55,7 +87,7 @@ export interface Member {
 export async function loadMyself(db: Database, session: Azdo.SessionInfo): Promise<Myself | null> {
     let data = await Azdo.getConnectionData(session);
     if (!data) { return null; }
-    
+
     let actualUser = data.authenticatedUser;
     let myself: Myself = {
         id: actualUser.id,
@@ -69,11 +101,11 @@ export async function loadMyself(db: Database, session: Azdo.SessionInfo): Promi
 /// Member functions
 ///
 
-export async function loadMembers(db: Database, accessToken: string): Promise<MainMembersStoredDocument | null> {
+export async function loadMembers(db: Database, session: Azdo.SessionInfo): Promise<MainMembersStoredDocument | null> {
     let membersDoc = await Azdo.getSharedDocument<MainMembersStoredDocument>(
         main_collection_id,
         main_members_document_id,
-        accessToken
+        session
     );
     if (!membersDoc) {
         console.warn("loadMembers: failed to obtain document");
@@ -87,7 +119,7 @@ export async function loadMembers(db: Database, accessToken: string): Promise<Ma
         let newMembersDoc = await Azdo.newSharedDocument(
             main_collection_id,
             membersDoc,
-            accessToken
+            session
         )
         if (!newMembersDoc) {
             console.error("upsertMember: failed to create document");
@@ -101,8 +133,8 @@ export async function loadMembers(db: Database, accessToken: string): Promise<Ma
     return membersDoc;
 }
 
-export async function upsertMember(db: Database, member: Member, accessToken: string): Promise<MainMembersStoredDocument | null> {
-    let membersDoc = await loadMembers(db, accessToken);
+export async function upsertMember(db: Database, member: Member, session: Azdo.SessionInfo): Promise<MainMembersStoredDocument | null> {
+    let membersDoc = await loadMembers(db, session);
     if (!membersDoc) {
         console.warn("upsertMember: failed to obtain document");
         return null;
@@ -129,7 +161,7 @@ export async function upsertMember(db: Database, member: Member, accessToken: st
     let newMembersDoc = await Azdo.editSharedDocument(
         main_collection_id,
         membersDoc,
-        accessToken
+        session
     )
     if (!newMembersDoc) {
         console.error("upsertMember: failed to edit document");
@@ -140,8 +172,8 @@ export async function upsertMember(db: Database, member: Member, accessToken: st
     return newMembersDoc;
 }
 
-export async function deleteMember(db: Database, memberId: string, accessToken: string): Promise<MainMembersStoredDocument | null> {
-    let membersDoc = await loadMembers(db, accessToken);
+export async function deleteMember(db: Database, memberId: string, session: Azdo.SessionInfo): Promise<MainMembersStoredDocument | null> {
+    let membersDoc = await loadMembers(db, session);
     if (!membersDoc) {
         console.warn("deleteMember: failed to obtain document");
         return null;
@@ -159,7 +191,7 @@ export async function deleteMember(db: Database, memberId: string, accessToken: 
     let newMembersDoc = await Azdo.editSharedDocument(
         main_collection_id,
         membersDoc,
-        accessToken
+        session
     )
     if (!newMembersDoc) {
         console.error("deleteMember: failed to edit document");
