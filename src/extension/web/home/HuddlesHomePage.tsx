@@ -1,22 +1,21 @@
 import * as Azdo from '../api/azdo.ts';
-import { makeHeaderBackButtonProps } from '../api/util.ts';
+import * as Util from '../api/util.ts';
 import type { AppNav } from './app.tsx';
+import { CreateHuddlePanel } from './CreateHuddlePanel.tsx';
 
 import React, { useState } from 'react'
 
 import { Card } from "azure-devops-ui/Card";
 import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
-import { Button } from 'azure-devops-ui/Components/Button/Button';
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
     const [_sessionInfo, _setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
+    const [isAddingHuddle, setIsAddingHuddle] = useState<boolean>(false);
 
     // HACK: force rerendering for server sync
     const [pollHack, setPollHack] = React.useState(Math.random());
     React.useEffect(() => { poll(); }, [pollHack]);
-
-    if (!p) { console.warn("No props in HomePage"); }
 
     React.useEffect(() => { init() }, []);
     async function init() {
@@ -30,28 +29,49 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         console.log("HuddlesHomePage poll");
     }
 
-    async function showHuddlesPage() {
-        await p.appNav.navTo({ view: "huddles", back: p.appNav.current });
+    async function showCreateHuddlePanel() {
+        setIsAddingHuddle(true);
+    }
+
+    async function onCommitNewHuddle() {
+        setIsAddingHuddle(false);
+    }
+
+    async function onCancelNewHuddle() {
+        setIsAddingHuddle(false);
     }
 
     return (
         <Page>
             <Header
-                title={"Huddles Home Page"}
+                title={"Huddles"}
                 titleSize={TitleSize.Large}
-                backButtonProps={makeHeaderBackButtonProps(p.appNav)}
+                backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
+                commandBarItems={[
+                    {
+                        id: "addHuddle",
+                        text: "Add Huddle",
+                        iconProps: { iconName: "Add" },
+                        onActivate: () => { showCreateHuddlePanel(); },
+                        isPrimary: true,
+                        important: true,
+                    },
+                ]}
             />
             <div className="page-content page-content-top">
                 <Card>
                     <div className="flex-column">
-                        <div>Huddles Home Page - via {p.appNav.current.back?.view || "no_back"}</div>
-                        <Button
-                            text={"Show Huddles"}
-                            onClick={() => showHuddlesPage()}
-                        />
+                        TODO: list huddles
                     </div>
                 </Card>
             </div>
+            {
+                isAddingHuddle &&
+                <CreateHuddlePanel
+                    onCommit={onCommitNewHuddle}
+                    onCancel={onCancelNewHuddle}
+                />
+            }
         </Page>
     )
 }

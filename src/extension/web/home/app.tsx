@@ -30,7 +30,6 @@ function App(p: AppProps) {
     }
 
     function createAppNav(route: AppRoute): AppNav {
-        console.log("createAppNav: ", route.view);
         return {
             current: route,
             navTo: async (route: AppRoute) => {
