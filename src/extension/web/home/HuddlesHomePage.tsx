@@ -23,7 +23,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         console.log("HuddlesHomePage init");
 
         try {
-            let huddles = await Db.loadHuddles(p.database, p.sessionInfo);
+            let huddles = await Db.loadHuddleInfos(p.database, p.sessionInfo);
             console.log("have huddles?", huddles)
         }
         catch {
@@ -46,8 +46,9 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         // TODO: spinner
         setIsAddingHuddle(false);
 
-        let huddle: Db.Huddle = {
-            name: data.name
+        let huddle: Db.HuddleInfo = {
+            id: Util.uuid("huddle"),
+            name: data.name,
         }
         await Db.newHuddle(huddle, p.database, p.sessionInfo)
     }
@@ -56,15 +57,19 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         setIsAddingHuddle(false);
     }
 
-    function listHuddles(): JSX.Element {
-        let dbHuddles = p.database.huddles?.items || []
+    async function onDeleteHuddle(huddle: Db.HuddleInfo) {
+        await Db.deleteHuddle(huddle, p.database, p.sessionInfo);
+    }
+
+    function listHuddleInfos(): JSX.Element {
+        let dbHuddles = p.database.huddleInfos?.items || []
         return <>
             <Header
                 title={`Count: ${dbHuddles.length}`}
                 titleSize={TitleSize.Small}
             />
             {
-                dbHuddles.map((huddle: Db.Huddle) => {
+                dbHuddles.map((huddle: Db.HuddleInfo) => {
                     return <Header
                         title={`Huddle: ${huddle.name}`}
                         titleSize={TitleSize.Small}
@@ -73,7 +78,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
                                 id: "deleteHuddle",
                                 text: "Delete",
                                 iconProps: { iconName: "Delete" },
-                                onActivate: () => { console.error("TODO: delete huddle"); },
+                                onActivate: () => { onDeleteHuddle(huddle); },
                                 isPrimary: true,
                                 important: false,
                             },
@@ -104,7 +109,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
             <div className="page-content page-content-top">
                 <Card>
                     <div className="flex-column">
-                        {listHuddles()}
+                        {listHuddleInfos()}
                     </div>
                 </Card>
             </div>
