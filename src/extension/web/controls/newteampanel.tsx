@@ -19,17 +19,27 @@ function NewTeamPanel(props: NewTeamPanelProps) {
     }
 
     return (
-        <Panel onDismiss={() => onDismiss()}>
-            <TextField
-                value={name}
-                onChange={(_e, v) => setName(v)}
-                width={TextFieldWidth.standard}
-            />
-            <TextField
-                value={code}
-                onChange={(_e, v) => setCode(v)}
-                width={TextFieldWidth.standard}
-            />
+        <Panel
+            escDismiss={true}
+            onDismiss={() => onDismiss()}>
+
+            <div className="flex-column">
+
+                <TextField
+                    label="Name"
+                    value={name}
+                    onChange={(_e, v) => setName(v)}
+                    width={TextFieldWidth.standard}
+                />
+
+                <TextField
+                    label="Short Code"
+                    value={code}
+                    onChange={(_e, v) => setCode(v)}
+                    width={TextFieldWidth.standard}
+                />
+
+            </div>
         </Panel>
     );
 }

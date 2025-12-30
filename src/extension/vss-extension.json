@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "sublinear",
-  "version": "0.1.164",
+  "version": "0.1.208",
   "name": "Sublinear",
   "description": "Sublinear",
   "publisher": "pingmint",
@@ -42,7 +42,10 @@
       "properties": {
         "name": "Sublinear",
         "order": 313,
-        "icon": "images/hub-group.png"
+        "icon": {
+          "light": "images/blue-planner.png",
+          "dark": "images/blue-planner.png"
+        }
       }
     },
     {

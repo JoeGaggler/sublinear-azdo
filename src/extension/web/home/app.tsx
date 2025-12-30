@@ -1,26 +1,24 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Card } from "azure-devops-ui/Card";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 import { Page } from "azure-devops-ui/Page";
-import { Button } from "azure-devops-ui/Button";
-import { Panel } from "azure-devops-ui/Panel";
-import NewTeamPanel from '../controls/newteampanel.tsx';
-import React from "react";
+// import NewTeamPanel from '../controls/newteampanel.tsx';
 import * as Azdo from '../api/azdo.ts';
 import * as db from '../api/db.ts';
+import HomePage from './HomePage.tsx';
+import HuddlesHomePage from './HuddlesHomePage.tsx';
 
 function App(p: AppProps) {
     const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
     const [route, setRoute] = useState<AppRoute>({ view: "loading" })
     const [database, setDatabase] = useState<db.Database>(db.makeDatabase());
-    const [showPanel, setShowPanel] = React.useState(false);
 
     // HACK: force rerendering for server sync
     const [pollHack, setPollHack] = React.useState(Math.random());
     React.useEffect(() => { poll(); }, [pollHack]);
 
     async function navTo(route: AppRoute) {
-        console.log("nav: ", route);
+        console.log("nav: to", route);
         let nav = await Azdo.getNavService();
         if (route.title) {
             nav.setDocumentTitle(route.title);
@@ -29,6 +27,16 @@ function App(p: AppProps) {
             nav.setHash(route.hash);
         }
         setRoute(route);
+    }
+
+    function createAppNav(route: AppRoute): AppNav {
+        console.log("createAppNav: ", route.view);
+        return {
+            current: route,
+            navTo: async (route: AppRoute) => {
+                await navTo(route);
+            },
+        };
     }
 
     const commmandBarItems = [
@@ -82,7 +90,8 @@ function App(p: AppProps) {
         console.log("init: nav params", query, hash);
         setRoute({ view: "home" }); // TODO: route via query/hash
 
-        setInterval(() => { setPollHack(Math.random()); }, 1000);
+        const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
+        return () => { clearInterval(interval_id); };
     }
 
     async function poll() {
@@ -124,138 +133,18 @@ function App(p: AppProps) {
         }
         case "home": {
             return (
-                <Page>
-                    {
-                        showPanel && (
-                            <Panel
-                                onDismiss={() => setShowPanel(false)}>
-                                <div>
-                                    <NewTeamPanel
-                                        onCommit={
-                                            async (code: string, name: string) => {
-                                                console.log("New team:", code, name);
-                                                setShowPanel(false);
-                                            }
-                                        }
-                                        onDismiss={
-                                            async () => setShowPanel(false)
-                                        }
-                                        initialCode="ORG"
-                                        initialName="My Organization" />
-                                </div>
-                                <div>
-                                    <Button onClick={() => setShowPanel(false)}>Close</Button>
-                                </div>
-                            </Panel>
-                        )
-                    }
-                    <Header
-                        title={"Sublinear"}
-                        titleSize={TitleSize.Large}
-                        commandBarItems={commmandBarItems} />
-                    <div className="page-content page-content-top">
-                        <Card>Page content</Card>
-                    </div>
-
-                    <Header
-                        title={"Teams"}
-                        titleSize={TitleSize.Large}
-                        commandBarItems={[
-                            {
-                                iconProps: {
-                                    iconName: "Add"
-                                },
-                                id: "addTeamButton",
-                                important: true,
-                                onActivate: () => {
-                                    setShowPanel(true);
-                                },
-                                text: "Add",
-                                tooltipProps: {
-                                    text: "Add team"
-                                },
-                            }
-                        ]} />
-                    <div className="page-content page-content-top">
-                        <Card>TODO: Teams</Card>
-                    </div>
-
-                    <Header
-                        title={"Members"}
-                        titleSize={TitleSize.Large}
-                        commandBarItems={
-                            [
-                                {
-                                    iconProps: {
-                                        iconName: "Add"
-                                    },
-                                    id: "testCreate",
-                                    important: true,
-                                    onActivate: () => {
-                                        console.log("add member");
-                                        let uid = Math.floor(Math.random() * 1000);
-                                        db.upsertMember(database, {
-                                            id: `user_${uid}`,
-                                            displayName: `User ${uid}`,
-                                            timestamp: Date.now()
-                                        }, sessionInfo.bearerToken).then((res) => {
-                                            if (res) {
-                                                console.log("upserted member", res);
-                                            } else {
-                                                console.error("failed to upsert member");
-                                            }
-                                            setDatabase({ ...database });
-                                        })
-                                    },
-                                    text: "Add",
-                                    tooltipProps: {
-                                        text: "Add member"
-                                    },
-                                }
-                            ]
-                        } />
-                    <div className="page-content page-content-top">
-                        <Card>
-                            <div className="flex-column">
-                                <div>Count: {database.members.items.length}</div>
-                                {
-                                    database.members.items.map((m) => (
-                                        <Header
-                                            title={m.displayName}
-                                            titleSize={TitleSize.Large}
-                                            commandBarItems={
-                                                [
-                                                    {
-                                                        iconProps: {
-                                                            iconName: "Delete"
-                                                        },
-                                                        id: "testCreate",
-                                                        important: true,
-                                                        onActivate: () => {
-                                                            console.log("delete member", m);
-                                                            db.deleteMember(database, m.id, sessionInfo.bearerToken).then((res) => {
-                                                                if (res) {
-                                                                    console.log("deleted member", m);
-                                                                    setDatabase({ ...database });
-                                                                } else {
-                                                                    console.error("failed to delete member", m);
-                                                                }
-                                                            })
-                                                        },
-                                                        text: "Delete",
-                                                        tooltipProps: {
-                                                            text: "Delete member"
-                                                        },
-                                                    }
-                                                ]
-                                            }
-                                        />)
-                                    )
-                                }
-                            </div>
-                        </Card>
-                    </div>
-                </Page>
+                <HomePage
+                    appNav={createAppNav(route)}
+                    sessionInfo={sessionInfo}
+                />
+            )
+        }
+        case "huddles": {
+            return (
+                <HuddlesHomePage
+                    appNav={createAppNav(route)}
+                    sessionInfo={sessionInfo}
+                />
             )
         }
         default: {
@@ -286,6 +175,12 @@ export interface AppRoute {
     view: string;
     hash?: string;
     title?: string;
+    back?: AppRoute;
+}
+
+export interface AppNav {
+    current: AppRoute;
+    navTo(route: AppRoute): Promise<void>;
 }
 
 export default App
