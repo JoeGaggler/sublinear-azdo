@@ -2,7 +2,7 @@ import * as Azdo from '../api/azdo.ts';
 import * as Util from '../api/util.ts';
 import * as Db from '../api/db.ts';
 import type { AppNav } from './app.tsx';
-import { CreateHuddlePanel } from './CreateHuddlePanel.tsx';
+import { CreateHuddlePanel, type CreateHuddlePanelValues } from './CreateHuddlePanel.tsx';
 
 import React from 'react'
 
@@ -11,7 +11,7 @@ import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
-    const [sessionInfo, _setSessionInfo] = React.useState<Azdo.SessionInfo>(p.sessionInfo);
+    // const [sessionInfo, _setSessionInfo] = React.useState<Azdo.SessionInfo>(p.sessionInfo);
     const [isAddingHuddle, setIsAddingHuddle] = React.useState<boolean>(false);
 
     // HACK: force rerendering for server sync
@@ -23,17 +23,8 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         console.log("HuddlesHomePage init");
 
         try {
-            let doc = await Azdo.getOrCreateSharedDocument<Db.MainHuddlesStoredDocument>(
-                Db.main_collection_id,
-                Db.main_huddles_document_id,
-                Db.makeEmptyHuddlesStoredDocument(),
-                Db.syncHuddles(p.database),
-                sessionInfo)
-            if (doc) {
-                console.log("have doc", doc)
-            } else {
-                console.error("no doc")
-            }
+            let huddles = await Db.loadHuddles(p.database, p.sessionInfo);
+            console.log("have huddles?", huddles)
         }
         catch {
             console.error("error doc")
@@ -51,15 +42,46 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         setIsAddingHuddle(true);
     }
 
-    async function onCommitNewHuddle() {
-        // Azdo.getSharedDocument(
-
-        // )
+    async function onCommitNewHuddle(data: CreateHuddlePanelValues) {
+        // TODO: spinner
         setIsAddingHuddle(false);
+
+        let huddle: Db.Huddle = {
+            name: data.name
+        }
+        await Db.newHuddle(huddle, p.database, p.sessionInfo)
     }
 
     async function onCancelNewHuddle() {
         setIsAddingHuddle(false);
+    }
+
+    function listHuddles(): JSX.Element {
+        let dbHuddles = p.database.huddles?.items || []
+        return <>
+            <Header
+                title={`Count: ${dbHuddles.length}`}
+                titleSize={TitleSize.Small}
+            />
+            {
+                dbHuddles.map((huddle: Db.Huddle) => {
+                    return <Header
+                        title={`Huddle: ${huddle.name}`}
+                        titleSize={TitleSize.Small}
+                        commandBarItems={[
+                            {
+                                id: "deleteHuddle",
+                                text: "Delete",
+                                iconProps: { iconName: "Delete" },
+                                onActivate: () => { console.error("TODO: delete huddle"); },
+                                isPrimary: true,
+                                important: false,
+                            },
+                        ]}
+                    />
+                }) || <></>
+            }
+        </>
     }
 
     return (
@@ -82,7 +104,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
             <div className="page-content page-content-top">
                 <Card>
                     <div className="flex-column">
-                        TODO: list huddles
+                        {listHuddles()}
                     </div>
                 </Card>
             </div>

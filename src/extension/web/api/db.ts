@@ -80,6 +80,50 @@ export function syncHuddles(db: Database): ((d: MainHuddlesStoredDocument) => vo
     };
 }
 
+export async function loadHuddles(db: Database, session: Azdo.SessionInfo): Promise<Huddles | null> {
+    let empty = makeEmptyHuddlesStoredDocument();
+    let doc = await Azdo.getOrCreateSharedDocument<MainHuddlesStoredDocument>(
+        main_collection_id,
+        main_huddles_document_id,
+        empty,
+        syncHuddles(db),
+        session);
+    if (!doc) {
+        console.error("loadHuddles: failed")
+        return null;
+    }
+
+    return doc.huddles || empty.huddles;
+}
+
+export async function newHuddle(data: Huddle, db: Database, session: Azdo.SessionInfo): Promise<void> {
+    let empty = makeEmptyHuddlesStoredDocument();
+    let doc = await Azdo.getOrCreateSharedDocument<MainHuddlesStoredDocument>(
+        main_collection_id,
+        main_huddles_document_id,
+        empty,
+        syncHuddles(db),
+        session);
+    if (!doc) {
+        console.error("newHuddle: get failed")
+        return;
+    }
+
+    if (!doc.huddles) { doc.huddles = { items: [] } }
+    if (!doc.huddles.items) { doc.huddles.items = [] }
+
+    doc.huddles.items.push(data);
+    let newDoc = await Azdo.editSharedDocument(main_collection_id, doc, session)
+    if (!newDoc) {
+        console.error("newHuddle: edit failed")
+        return;
+    }
+
+    db.huddles = newDoc.huddles;
+
+    return;
+}
+
 // 
 // Myself functions
 //
