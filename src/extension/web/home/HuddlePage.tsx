@@ -25,23 +25,8 @@ function HuddlePage(p: HuddlePageProps) {
         if (!doc) {
             console.warn("getHuddle: does not exist")
 
-            let doc2 = await Azdo.getSharedDocument<Db.HuddleInfosStoredDocument>(
-                Db.main_collection_id,
-                Db.main_huddles_document_id,
-                p.sessionInfo);
-            if (doc2) {
-                let found = doc2.huddleInfos.items.find(h => h.id === p.id)
-                doc = {
-                    id: p.id,
-                    name: found?.name || "New Huddle", // TODO
-                }
-            }
-            else {
-                doc = {
-                    id: p.id,
-                    name: "New Huddle", // TODO
-                }
-            }
+            // TODO: nav back?
+            doc = null
         }
         setHuddle(doc);
     }
@@ -65,14 +50,9 @@ function HuddlePage(p: HuddlePageProps) {
                 areaPath: data.areaPath
             }
 
-            let saved = await Azdo.upsertSharedDocument(Db.huddle_collection_id, nextHuddle, p.sessionInfo)
-            if (!saved) {
-                console.error("onCommitEditHuddle: edit failed")
-                return
-            }
+            let [savedHuddle, _savedHuddles] = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
 
-            setHuddle(saved);
-            p.onChange(huddle).catch() // fire-and-forget
+            setHuddle(savedHuddle);
         }
         finally {
             setIsEditingHuddle(false);
@@ -148,7 +128,6 @@ export interface HuddlePageProps {
     database: Db.Database;
     sessionInfo: Azdo.SessionInfo;
     id: string;
-    onChange: (huddle: Db.HuddleStoredDocument) => Promise<void>;
 }
 
 export default HuddlePage;

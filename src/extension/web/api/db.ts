@@ -36,7 +36,7 @@ export interface Database {
 // Huddles
 //
 
-export interface HuddleInfosStoredDocument extends StoredDocument {
+export interface HuddleListStoredDocument extends StoredDocument {
     huddleInfos: HuddleInfos;
 }
 
@@ -75,8 +75,8 @@ export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => 
     }
 }
 
-export async function getMainHuddlesStoredDocument(session: Azdo.SessionInfo): Promise<HuddleInfosStoredDocument> {
-    let doc = await Azdo.getSharedDocument<HuddleInfosStoredDocument>(
+export async function requireHuddleListStoredDocument(session: Azdo.SessionInfo): Promise<HuddleListStoredDocument> {
+    let doc = await Azdo.getSharedDocument<HuddleListStoredDocument>(
         main_collection_id,
         main_huddles_document_id,
         session);
@@ -94,7 +94,7 @@ export async function getMainHuddlesStoredDocument(session: Azdo.SessionInfo): P
 }
 
 export async function deleteHuddle(data: HuddleInfo, session: Azdo.SessionInfo): Promise<void> {
-    let doc = await getMainHuddlesStoredDocument(session);
+    let doc = await requireHuddleListStoredDocument(session);
     if (!doc) {
         console.error("deleteHuddle: failed to get document")
         return;
@@ -130,20 +130,37 @@ export async function deleteHuddle(data: HuddleInfo, session: Azdo.SessionInfo):
     }
 }
 
-export async function getHuddleInfo(id: string, session: Azdo.SessionInfo): Promise<HuddleInfo | null> {
-    let huddles = await getMainHuddlesStoredDocument(session);
-    if (!huddles) {
-        console.log("getHuddleInfo: failed to load huddles")
-        return null
+export async function upsertHuddle(data: HuddleStoredDocument, session: Azdo.SessionInfo): Promise<[HuddleStoredDocument | null, HuddleListStoredDocument | null]> {
+    let savedHuddle = await Azdo.upsertSharedDocument(huddle_collection_id, data, session)
+    if (!savedHuddle) {
+        console.error("upsertHuddle: upsert huddle failed")
+        return [null, null];
     }
 
-    let huddle = huddles.huddleInfos.items.find(h => h.id === id);
-    if (!huddle) {
-        console.log("HuddlePage: failed to load huddle: ", id)
-        return null
+    // NOW UPDATE THE LIST
+
+    let nextHuddleInfo: HuddleInfo = {
+        id: data.id,
+        name: data.name,
+        isDeleted: false,
     }
 
-    return huddle
+    let prevHuddles = await requireHuddleListStoredDocument(session);
+
+    let idx = prevHuddles.huddleInfos.items.findIndex(h => h.id === data.id)
+    if (idx != -1) {
+        prevHuddles.huddleInfos.items.splice(idx, 1, nextHuddleInfo)
+    } else {
+        prevHuddles.huddleInfos.items.push(nextHuddleInfo)
+    }
+
+    let savedHuddles = await Azdo.upsertSharedDocument(main_collection_id, prevHuddles, session)
+    if (!savedHuddles) {
+        console.error("newHuddle: upsert huddles failed")
+        return [null, null];
+    }
+
+    return [savedHuddle, savedHuddles];
 }
 
 // 

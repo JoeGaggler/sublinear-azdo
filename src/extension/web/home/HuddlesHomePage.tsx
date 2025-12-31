@@ -14,22 +14,11 @@ import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
     const [isAddingHuddle, setIsAddingHuddle] = React.useState<boolean>(false);
-    const [huddles, setHuddles] = React.useState<Db.HuddleInfosStoredDocument | null>(null)
+    const [huddles, setHuddles] = React.useState<Db.HuddleListStoredDocument | null>(null)
 
     React.useEffect(() => { init(); return; }, []);
     async function init() {
-        let doc = await Azdo.getSharedDocument<Db.HuddleInfosStoredDocument>(
-            Db.main_collection_id,
-            Db.main_huddles_document_id,
-            p.sessionInfo);
-        if (!doc) {
-            doc = {
-                id: Db.main_huddles_document_id,
-                huddleInfos: {
-                    items: []
-                }
-            }
-        }
+        let doc = await Db.requireHuddleListStoredDocument(p.sessionInfo)
         setHuddles(doc);
     }
 
@@ -47,36 +36,28 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
     }
 
     async function onCommitNewHuddle(data: CreateHuddlePanelValues) {
-        // TODO: spinner
-        setIsAddingHuddle(false);
+        try {
+            const id = Util.uuid("huddle");
 
-        let huddleInfo: Db.HuddleInfo = {
-            id: Util.uuid("huddle"),
-            name: data.name,
-            isDeleted: false,
+            let nextHuddle: Db.HuddleStoredDocument = {
+                id: id,
+                name: data.name,
+            }
+            let [savedHuddle, savedHuddles] = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
+
+            setHuddles(savedHuddles);
+
+            if (savedHuddle) {
+                p.appNav.navTo({
+                    view: "huddle",
+                    data: savedHuddle.id,
+                    back: p.appNav.current,
+                })
+            }
         }
-
-        let anyHuddles: any = huddles || {}
-
-        let nextHuddles: Db.HuddleInfosStoredDocument = {
-            ...anyHuddles,
-            huddleInfos: {
-                ...anyHuddles.huddleInfos,
-                items: [
-                    ...anyHuddles.huddleInfos.items,
-                    huddleInfo,
-                ]
-            },
+        finally {
+            setIsAddingHuddle(false);
         }
-
-        let newDoc = await Azdo.upsertSharedDocument(Db.main_collection_id, nextHuddles, p.sessionInfo)
-        if (!newDoc) {
-            console.error("newHuddle: upsert failed")
-            return;
-        }
-
-        setHuddles(newDoc);
-        p.onChange(newDoc).catch(); // fire-and-forget
     }
 
     async function onCancelNewHuddle() {
@@ -176,7 +157,6 @@ export interface HuddlesHomePageProps {
     appNav: AppNav;
     database: Db.Database;
     sessionInfo: Azdo.SessionInfo;
-    onChange: (huddles: Db.HuddleInfosStoredDocument) => Promise<void>;
 }
 
 export default HuddlesHomePage
