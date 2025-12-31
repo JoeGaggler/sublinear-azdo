@@ -31,7 +31,11 @@ function HomePage(p: HomePageProps) {
     }
 
     async function showHuddlesPage() {
-        await p.appNav.navTo({ view: "huddles", back: p.appNav.current });
+        await p.appNav.navTo({
+            view: "huddles",
+            hash: "huddles/",
+            back: p.appNav.current,
+        });
     }
 
     return (

@@ -10,7 +10,7 @@ import HuddlesHomePage from './HuddlesHomePage.tsx';
 
 function App(p: AppProps) {
     const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
-    const [route, setRoute] = useState<AppRoute>({ view: "loading" })
+    const [route, setRoute] = useState<AppRoute>({ view: "loading", hash: "" })
     const [database, setDatabase] = useState<db.Database>(db.makeDatabase());
 
     // HACK: force rerendering for server sync
@@ -23,7 +23,7 @@ function App(p: AppProps) {
         if (route.title) {
             nav.setDocumentTitle(route.title);
         }
-        if (route.hash) {
+        if (route.hash || route.hash === "") {
             nav.setHash(route.hash);
         }
         setRoute(route);
@@ -87,7 +87,7 @@ function App(p: AppProps) {
         const query = await nav.getQueryParams();
         const hash = await nav.getHash();
         console.log("init: nav params", query, hash);
-        setRoute({ view: "home" }); // TODO: route via query/hash
+        setRoute({ view: "home", hash: "" }); // TODO: route via query/hash
 
         const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
         return () => { clearInterval(interval_id); };

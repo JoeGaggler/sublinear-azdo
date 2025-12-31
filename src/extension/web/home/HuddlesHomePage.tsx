@@ -9,6 +9,8 @@ import React from 'react'
 import { Card } from "azure-devops-ui/Card";
 import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
+import { ScrollableList, ListItem } from "azure-devops-ui/List";
+import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
     // const [sessionInfo, _setSessionInfo] = React.useState<Azdo.SessionInfo>(p.sessionInfo);
@@ -61,32 +63,42 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         await Db.deleteHuddle(huddle, p.database, p.sessionInfo);
     }
 
+    async function onSelectHuddle(huddle: Db.Huddle) {
+        console.log("onSelectHuddle:", huddle)
+    }
+
     function listHuddles(): JSX.Element {
         let dbHuddles = p.database.huddles?.items || []
-        return <>
-            <Header
-                title={`Count: ${dbHuddles.length}`}
-                titleSize={TitleSize.Small}
-            />
-            {
-                dbHuddles.map((huddle: Db.HuddleInfo) => {
-                    return <Header
-                        title={`Huddle: ${huddle.name}`}
-                        titleSize={TitleSize.Small}
-                        commandBarItems={[
-                            {
-                                id: "deleteHuddle",
-                                text: "Delete",
-                                iconProps: { iconName: "Delete" },
-                                onActivate: () => { onDeleteHuddle(huddle); },
-                                isPrimary: true,
-                                important: false,
-                            },
-                        ]}
-                    />
-                }) || <></>
+        dbHuddles = dbHuddles.filter(h => !h.isDeleted)
+        dbHuddles.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+        // let selection = new ListSelection(true);
+        return <ScrollableList
+            itemProvider={new ArrayItemProvider<Db.Huddle>(dbHuddles)}
+            selection={undefined}
+            onSelect={(_event, data) => onSelectHuddle(data.data)}
+            selectRowOnClick={true}
+            onActivate={() => console.log("activate")}
+            renderRow={
+                (idx, huddle, details) => {
+                    return <ListItem key={`list-item-${idx}`} index={idx} details={details}>
+                        <Header
+                            title={`Huddle: ${huddle.name}`}
+                            titleSize={TitleSize.Small}
+                            commandBarItems={[
+                                {
+                                    id: "deleteHuddle",
+                                    text: "Delete",
+                                    iconProps: { iconName: "Delete" },
+                                    onActivate: () => { onDeleteHuddle(huddle); },
+                                    isPrimary: true,
+                                    important: false,
+                                },
+                            ]}
+                        />
+                    </ListItem>
+                }
             }
-        </>
+        />
     }
 
     return (
