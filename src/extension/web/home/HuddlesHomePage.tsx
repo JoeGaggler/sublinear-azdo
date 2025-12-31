@@ -35,6 +35,15 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         setIsAddingHuddle(true);
     }
 
+    async function navToHuddleInfo(target: Db.HuddleInfo) {
+        p.appNav.navTo({
+            view: "huddle",
+            data: target.id,
+            title: `Huddle - ${target.name}`,
+            back: p.appNav.current,
+        })
+    }
+
     async function onCommitNewHuddle(data: CreateHuddlePanelValues) {
         try {
             const id = Util.uuid("huddle");
@@ -43,17 +52,14 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
                 id: id,
                 name: data.name,
             }
-            let [savedHuddle, savedHuddles] = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
-
-            setHuddles(savedHuddles);
-
-            if (savedHuddle) {
-                p.appNav.navTo({
-                    view: "huddle",
-                    data: savedHuddle.id,
-                    back: p.appNav.current,
-                })
+            let upsertResult = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
+            if (!upsertResult) {
+                console.warn("onCommitNewHuddle: upsert failed")
+                return
             }
+
+            setHuddles(upsertResult.list);
+            navToHuddleInfo(upsertResult.info);
         }
         finally {
             setIsAddingHuddle(false);
@@ -65,18 +71,15 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
     }
 
     async function onDeleteHuddle(huddle: Db.HuddleInfo) {
-        await Db.deleteHuddle(huddle, p.sessionInfo);
+        let nextHuddles = await Db.deleteHuddle(huddle, p.sessionInfo);
+        if (nextHuddles) {
+            setHuddles(nextHuddles);
+        }
     }
 
     async function onSelectHuddle(huddleInfo: Db.HuddleInfo) {
         console.log("onSelectHuddle:", huddleInfo)
-
-        p.appNav.navTo({
-            view: `huddle`,
-            data: huddleInfo.id,
-            title: `huddle-${huddleInfo.id}`,
-            back: p.appNav.current,
-        })
+        navToHuddleInfo(huddleInfo);
     }
 
     function listHuddles(): JSX.Element {
@@ -99,7 +102,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
                 (idx, huddle, details) => {
                     return <ListItem key={`list-item-${idx}`} index={idx} details={details}>
                         <Header
-                            title={`Huddle: ${huddle.name}`}
+                            title={`Huddle - ${huddle.name}`}
                             titleSize={TitleSize.Small}
                             commandBarItems={[
                                 {

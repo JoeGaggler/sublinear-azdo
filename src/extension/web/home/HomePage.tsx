@@ -21,6 +21,7 @@ function HomePage(p: HomePageProps) {
     async function showHuddlesPage() {
         await p.appNav.navTo({
             view: "huddles",
+            title: "Huddles",
             back: p.appNav.current,
         });
     }

@@ -50,9 +50,13 @@ function HuddlePage(p: HuddlePageProps) {
                 areaPath: data.areaPath
             }
 
-            let [savedHuddle, _savedHuddles] = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
+            let upsertResult = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
+            if (!upsertResult) {
+                console.warn("onCommitEditHuddle: upsert failed")
+                return
+            }
 
-            setHuddle(savedHuddle);
+            setHuddle(upsertResult.item);
         }
         finally {
             setIsEditingHuddle(false);

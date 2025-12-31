@@ -60,7 +60,11 @@ function App(p: AppProps) {
         const query = await nav.getQueryParams();
         const hash = await nav.getHash();
         console.log("init: nav params", query, hash);
-        setRoute({ view: "home", data: "" }); // TODO: route via query/hash
+        setRoute({
+            view: "home",
+            data: "",
+            title: "Home - Sublinear",
+        }); // TODO: route via query/hash
     }
 
     async function poll() {
