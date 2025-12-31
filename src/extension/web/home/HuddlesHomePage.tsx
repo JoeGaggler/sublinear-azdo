@@ -67,8 +67,8 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         console.log("onSelectHuddle:", huddle)
 
         p.appNav.navTo({
-            view: `huddle-${huddle.id}`,
-            hash: `huddle-${huddle.id}`,
+            view: `huddle`,
+            data: huddle.id,
             title: `huddle-${huddle.id}`,
             back: p.appNav.current,
         })

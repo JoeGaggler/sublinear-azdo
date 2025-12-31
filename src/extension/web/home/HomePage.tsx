@@ -33,7 +33,7 @@ function HomePage(p: HomePageProps) {
     async function showHuddlesPage() {
         await p.appNav.navTo({
             view: "huddles",
-            hash: "huddles/",
+            data: "",
             back: p.appNav.current,
         });
     }

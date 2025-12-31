@@ -85,6 +85,10 @@ export interface Huddle {
     isDeleted: boolean
 }
 
+export interface HuddleStoredDocument2 extends StoredDocument {
+    name: string;
+}
+
 export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => boolean, removing: (t: T) => void, create: (from: S) => T): void {
     for (let t of target) {
         if (source.every(s => !equals(s, t))) {
@@ -199,6 +203,45 @@ export async function deleteHuddle(data: HuddleInfo, db: Database, session: Azdo
         console.error("deleteHuddle: failed to delete item document")
         // fallthrough
     }
+}
+
+export async function getHuddleInfo(id: string, database: Database, session: Azdo.SessionInfo): Promise<HuddleInfo | null> {
+    let huddles = await getMainHuddlesStoredDocument(database, session);
+    if (!huddles) {
+        console.log("getHuddleInfo: failed to load huddles")
+        return null
+    }
+
+    let huddle = huddles.huddleInfos.items.find(h => h.id === id);
+    if (!huddle) {
+        console.log("HuddlePage: failed to load huddle: ", id)
+        return null
+    }
+
+    return huddle
+}
+
+export async function getHuddle(info: HuddleInfo, database: Database, session: Azdo.SessionInfo): Promise<HuddleStoredDocument2 | null> {
+    let empty: HuddleStoredDocument2 = {
+        id: main_huddles_document_id,
+        name: info.name,
+    }
+    let doc = await Azdo.getOrCreateSharedDocument<HuddleStoredDocument2>(
+        huddle_collection_id,
+        info.id,
+        empty,
+        session);
+    if (!doc) {
+        console.error("getHuddle: failed")
+        return null;
+    }
+
+    if (!database) {
+        console.error("getHuddle: no db")
+        // TODO: sync?
+    }
+
+    return doc;
 }
 
 // 
