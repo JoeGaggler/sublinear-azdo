@@ -106,7 +106,6 @@ export async function getOrCreateSharedDocument<TDoc extends StoredDocument>(
     cid: string,
     did: string,
     blank: TDoc,
-    setter: (doc: TDoc) => void,
     session: SessionInfo
 ): Promise<TDoc | null> {
     let doc = await getSharedDocument<TDoc>(
@@ -134,7 +133,6 @@ export async function getOrCreateSharedDocument<TDoc extends StoredDocument>(
     }
 
     console.log("loadHuddles: loaded", doc);
-    setter(doc);
     return doc;
 }
 

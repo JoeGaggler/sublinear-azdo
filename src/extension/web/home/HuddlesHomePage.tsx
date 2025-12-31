@@ -23,8 +23,8 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         console.log("HuddlesHomePage init");
 
         try {
-            let huddles = await Db.loadHuddleInfos(p.database, p.sessionInfo);
-            console.log("have huddles?", huddles)
+            let huddles = await Db.getMainHuddlesStoredDocument(p.database, p.sessionInfo);
+            console.log("have huddles?", huddles?.huddleInfos)
         }
         catch {
             console.error("error doc")
@@ -61,8 +61,8 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         await Db.deleteHuddle(huddle, p.database, p.sessionInfo);
     }
 
-    function listHuddleInfos(): JSX.Element {
-        let dbHuddles = p.database.huddleInfos?.items || []
+    function listHuddles(): JSX.Element {
+        let dbHuddles = p.database.huddles?.items || []
         return <>
             <Header
                 title={`Count: ${dbHuddles.length}`}
@@ -109,7 +109,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
             <div className="page-content page-content-top">
                 <Card>
                     <div className="flex-column">
-                        {listHuddleInfos()}
+                        {listHuddles()}
                     </div>
                 </Card>
             </div>
