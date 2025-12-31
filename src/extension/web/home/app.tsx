@@ -7,6 +7,7 @@ import * as Azdo from '../api/azdo.ts';
 import * as db from '../api/db.ts';
 import HomePage from './HomePage.tsx';
 import HuddlesHomePage from './HuddlesHomePage.tsx';
+import { makeHeaderBackButtonProps } from '../api/util.ts';
 
 function App(p: AppProps) {
     const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
@@ -149,12 +150,14 @@ function App(p: AppProps) {
             )
         }
         default: {
+            let bbProps: any | undefined = (route) ? makeHeaderBackButtonProps(createAppNav(route)) : undefined // HACK: any
             return (
                 <Page>
                     <Header
                         title={"Error"}
                         titleSize={TitleSize.Large}
-                        commandBarItems={commmandBarItems} />
+                        commandBarItems={commmandBarItems}
+                        backButtonProps={bbProps} />
                     <div className="page-content page-content-top">
                         <Card>Unknown view: {route.view}</Card>
                     </div>

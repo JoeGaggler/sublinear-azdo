@@ -65,6 +65,13 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
 
     async function onSelectHuddle(huddle: Db.Huddle) {
         console.log("onSelectHuddle:", huddle)
+
+        p.appNav.navTo({
+            view: `huddle-${huddle.id}`,
+            hash: `huddle-${huddle.id}`,
+            title: `huddle-${huddle.id}`,
+            back: p.appNav.current,
+        })
     }
 
     function listHuddles(): JSX.Element {
