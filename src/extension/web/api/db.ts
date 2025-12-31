@@ -28,14 +28,12 @@ export interface MainMembersStoredDocument extends StoredDocument {
 export function makeDatabase(): Database {
     return {
         members: { items: [] },
-        huddles: { items: [] },
     };
 }
 
 export interface Database {
     myself?: Myself;
     members: Members;
-    huddles: Huddles
 }
 
 export interface Myself {
@@ -57,7 +55,7 @@ export interface Member {
 // Huddles
 //
 
-export interface MainHuddlesStoredDocument extends StoredDocument {
+export interface HuddleInfosStoredDocument extends StoredDocument {
     huddleInfos: HuddleInfos;
 }
 
@@ -68,24 +66,10 @@ export interface HuddleInfos {
 export interface HuddleInfo {
     id: string;
     name: string;
-}
-
-export interface HuddleStoredDocument extends StoredDocument {
-    data: Huddle;
-}
-
-export interface Huddles {
-    items: Huddle[]
-}
-
-export interface Huddle {
-    id: string;
-    name: string;
-    isReady: boolean
     isDeleted: boolean
 }
 
-export interface HuddleStoredDocument2 extends StoredDocument {
+export interface HuddleStoredDocument extends StoredDocument {
     name: string;
 }
 
@@ -105,14 +89,14 @@ export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => 
     }
 }
 
-export async function getMainHuddlesStoredDocument(db: Database, session: Azdo.SessionInfo): Promise<MainHuddlesStoredDocument | null> {
-    let empty: MainHuddlesStoredDocument = {
+export async function getMainHuddlesStoredDocument(session: Azdo.SessionInfo): Promise<HuddleInfosStoredDocument | null> {
+    let empty: HuddleInfosStoredDocument = {
         id: main_huddles_document_id,
         huddleInfos: {
             items: []
         }
     }
-    let doc = await Azdo.getOrCreateSharedDocument<MainHuddlesStoredDocument>(
+    let doc = await Azdo.getOrCreateSharedDocument<HuddleInfosStoredDocument>(
         main_collection_id,
         main_huddles_document_id,
         empty,
@@ -122,25 +106,25 @@ export async function getMainHuddlesStoredDocument(db: Database, session: Azdo.S
         return null;
     }
 
-    syncing(
-        doc.huddleInfos.items,
-        db.huddles.items,
-        (s, t) => s.id === t.id,
-        t => t.isDeleted = true,
-        t => {
-            return {
-                id: t.id,
-                name: t.name,
-                isReady: false,
-                isDeleted: false,
-            }
-        })
+    // syncing(
+    //     doc.huddleInfos.items,
+    //     db.huddles.items,
+    //     (s, t) => s.id === t.id,
+    //     t => t.isDeleted = true,
+    //     t => {
+    //         return {
+    //             id: t.id,
+    //             name: t.name,
+    //             isReady: false,
+    //             isDeleted: false,
+    //         }
+    //     })
 
     return doc;
 }
 
-export async function newHuddle(data: HuddleInfo, db: Database, session: Azdo.SessionInfo): Promise<void> {
-    let doc = await getMainHuddlesStoredDocument(db, session);
+export async function newHuddleInfo(data: HuddleInfo, session: Azdo.SessionInfo): Promise<void> {
+    let doc = await getMainHuddlesStoredDocument(session);
     if (!doc) {
         console.error("newHuddle: get failed")
         return;
@@ -150,12 +134,6 @@ export async function newHuddle(data: HuddleInfo, db: Database, session: Azdo.Se
     if (!doc.huddleInfos.items) { doc.huddleInfos.items = [] }
 
     doc.huddleInfos.items.push(data);
-    db.huddles.items.push({
-        id: data.id,
-        name: data.name,
-        isReady: false,
-        isDeleted: false,
-    });
 
     let newDoc = await Azdo.editSharedDocument(main_collection_id, doc, session)
     if (!newDoc) {
@@ -164,8 +142,8 @@ export async function newHuddle(data: HuddleInfo, db: Database, session: Azdo.Se
     }
 }
 
-export async function deleteHuddle(data: HuddleInfo, db: Database, session: Azdo.SessionInfo): Promise<void> {
-    let doc = await getMainHuddlesStoredDocument(db, session);
+export async function deleteHuddle(data: HuddleInfo, session: Azdo.SessionInfo): Promise<void> {
+    let doc = await getMainHuddlesStoredDocument(session);
     if (!doc) {
         console.error("deleteHuddle: failed to get document")
         return;
@@ -188,10 +166,6 @@ export async function deleteHuddle(data: HuddleInfo, db: Database, session: Azdo
         return;
     }
 
-    if (!spliceWhere(db.huddles.items, i => i.id === data.id)) {
-        console.error("deleteHuddle: not in db?")
-    }
-
     // TODO: cleanup orphaned record
 
     let deleted = await Azdo.deleteSharedDocument(
@@ -205,8 +179,8 @@ export async function deleteHuddle(data: HuddleInfo, db: Database, session: Azdo
     }
 }
 
-export async function getHuddleInfo(id: string, database: Database, session: Azdo.SessionInfo): Promise<HuddleInfo | null> {
-    let huddles = await getMainHuddlesStoredDocument(database, session);
+export async function getHuddleInfo(id: string, session: Azdo.SessionInfo): Promise<HuddleInfo | null> {
+    let huddles = await getMainHuddlesStoredDocument(session);
     if (!huddles) {
         console.log("getHuddleInfo: failed to load huddles")
         return null
@@ -221,12 +195,12 @@ export async function getHuddleInfo(id: string, database: Database, session: Azd
     return huddle
 }
 
-export async function getHuddle(info: HuddleInfo, database: Database, session: Azdo.SessionInfo): Promise<HuddleStoredDocument2 | null> {
-    let empty: HuddleStoredDocument2 = {
+export async function getHuddle(info: HuddleInfo, database: Database, session: Azdo.SessionInfo): Promise<HuddleStoredDocument | null> {
+    let empty: HuddleStoredDocument = {
         id: main_huddles_document_id,
         name: info.name,
     }
-    let doc = await Azdo.getOrCreateSharedDocument<HuddleStoredDocument2>(
+    let doc = await Azdo.getOrCreateSharedDocument<HuddleStoredDocument>(
         huddle_collection_id,
         info.id,
         empty,

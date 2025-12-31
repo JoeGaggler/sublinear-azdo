@@ -11,8 +11,8 @@ import React from 'react'
 
 
 function HuddlePage(p: HuddlePageProps) {
-    const [isLoaded, setIsLoaded] = React.useState<boolean>(false);
-    const [title, setTitle] = React.useState<string>("Loading...");
+    const [huddleInfo, setHuddleInfo] = React.useState<Db.HuddleInfo>(p.huddleInfo)
+    const [huddle, setHuddle] = React.useState<Db.HuddleStoredDocument | null>(null)
 
     // HACK: force rerendering for server sync
     const [pollHack, setPollHack] = React.useState(Math.random());
@@ -21,22 +21,22 @@ function HuddlePage(p: HuddlePageProps) {
     React.useEffect(() => { init() }, []);
     async function init() {
         console.log("HuddlePage init");
-
-        let huddleInfo = await Db.getHuddleInfo(p.huddleId, p.database, p.sessionInfo);
+        
+        let huddleInfo = await Db.getHuddleInfo(p.huddleInfo.id, p.sessionInfo);
         if (!huddleInfo) {
-            console.log("HuddlePage: failed to load huddle info: ", p.huddleId)
+            console.log("HuddlePage: failed to load huddle info: ", p.huddleInfo.id)
             return
         }
 
-        setTitle(huddleInfo.name)
+        setHuddleInfo(huddleInfo)
 
         let huddle = await Db.getHuddle(huddleInfo, p.database, p.sessionInfo)
         if (!huddle) {
-            console.log("HuddlePage: failed to load huddle: ", p.huddleId)
+            console.log("HuddlePage: failed to load huddle: ", p.huddleInfo.id)
             return
         }
 
-        setIsLoaded(true)
+        setHuddle(huddle)
 
         const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
         return () => { clearInterval(interval_id); };
@@ -49,16 +49,16 @@ function HuddlePage(p: HuddlePageProps) {
     return (
         <Page>
             <Header
-                title={title}
+                title={huddleInfo.name}
                 titleSize={TitleSize.Large}
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
             />
             {
-                (isLoaded) && (
+                (huddle) && (
                     <div className="page-content page-content-top">
                         <Card>
                             <div className="flex-column">
-                                {p.huddleId}
+                                {huddleInfo.id}
                             </div>
                         </Card>
                     </div>
@@ -73,7 +73,7 @@ export interface HuddlePageProps {
     appNav: AppNav;
     database: Db.Database;
     sessionInfo: Azdo.SessionInfo;
-    huddleId: string;
+    huddleInfo: Db.HuddleInfo;
 }
 
 export default HuddlePage;

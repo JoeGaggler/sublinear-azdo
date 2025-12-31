@@ -13,8 +13,8 @@ import { ScrollableList, ListItem } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
-    // const [sessionInfo, _setSessionInfo] = React.useState<Azdo.SessionInfo>(p.sessionInfo);
     const [isAddingHuddle, setIsAddingHuddle] = React.useState<boolean>(false);
+    const [huddleInfos, setHuddleInfos] = React.useState<Db.HuddleInfo[]>([])
 
     // HACK: force rerendering for server sync
     const [pollHack, setPollHack] = React.useState(Math.random());
@@ -25,8 +25,18 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         console.log("HuddlesHomePage init");
 
         try {
-            let huddles = await Db.getMainHuddlesStoredDocument(p.database, p.sessionInfo);
-            console.log("have huddles?", huddles?.huddleInfos)
+            let huddles = await Db.getMainHuddlesStoredDocument(p.sessionInfo);
+            if (!huddles) {
+                console.error("HuddlesHomePage: no huddle info doc")
+                return
+            }
+
+            let huddleInfos = huddles.huddleInfos
+            if (!huddleInfos) {
+                console.error("HuddlesHomePage: no huddle infos")
+                return
+            }
+            setHuddleInfos(huddleInfos.items || [])
         }
         catch {
             console.error("error doc")
@@ -48,11 +58,18 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         // TODO: spinner
         setIsAddingHuddle(false);
 
-        let huddle: Db.HuddleInfo = {
+        let huddleInfo: Db.HuddleInfo = {
             id: Util.uuid("huddle"),
             name: data.name,
+            isDeleted: false,
         }
-        await Db.newHuddle(huddle, p.database, p.sessionInfo)
+        await Db.newHuddleInfo(huddleInfo, p.sessionInfo)
+
+        let nextHuddleInfos = [
+            ...huddleInfos,
+            huddleInfo
+        ]
+        setHuddleInfos(nextHuddleInfos);
     }
 
     async function onCancelNewHuddle() {
@@ -60,27 +77,27 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
     }
 
     async function onDeleteHuddle(huddle: Db.HuddleInfo) {
-        await Db.deleteHuddle(huddle, p.database, p.sessionInfo);
+        await Db.deleteHuddle(huddle, p.sessionInfo);
     }
 
-    async function onSelectHuddle(huddle: Db.Huddle) {
+    async function onSelectHuddle(huddle: Db.HuddleInfo) {
         console.log("onSelectHuddle:", huddle)
 
         p.appNav.navTo({
             view: `huddle`,
-            data: huddle.id,
+            data: huddle,
             title: `huddle-${huddle.id}`,
             back: p.appNav.current,
         })
     }
 
     function listHuddles(): JSX.Element {
-        let dbHuddles = p.database.huddles?.items || []
+        let dbHuddles = huddleInfos
         dbHuddles = dbHuddles.filter(h => !h.isDeleted)
         dbHuddles.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
         // let selection = new ListSelection(true);
         return <ScrollableList
-            itemProvider={new ArrayItemProvider<Db.Huddle>(dbHuddles)}
+            itemProvider={new ArrayItemProvider<Db.HuddleInfo>(dbHuddles)}
             selection={undefined}
             onSelect={(_event, data) => onSelectHuddle(data.data)}
             selectRowOnClick={true}

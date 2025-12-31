@@ -121,12 +121,41 @@ function App(p: AppProps) {
             )
         }
         case "huddle": {
+            let huddleInfo = route.data as db.HuddleInfo
+            if (!huddleInfo || typeof huddleInfo !== "object") {
+                console.error("Invalid data for huddle:", route.data)
+                navTo({
+                    view: "error",
+                    data: "Invalid data for huddle",
+                    back: route.back,
+                });
+                return <></>
+            }
+
+            if (!huddleInfo.id) {
+                navTo({
+                    view: "error",
+                    data: "Invalid id for huddle",
+                    back: route.back,
+                });
+                return <></>
+            }
+
+            if (!huddleInfo.name) {
+                navTo({
+                    view: "error",
+                    data: "Invalid name for huddle",
+                    back: route.back,
+                });
+                return <></>
+            }
+
             return (
                 <HuddlePage
                     appNav={createAppNav(route)}
                     database={database}
                     sessionInfo={sessionInfo}
-                    huddleId={route.data}
+                    huddleInfo={huddleInfo}
                 />
             )
         }
@@ -157,8 +186,8 @@ export interface AppProps {
 
 export interface AppRoute {
     view: string;
-    data: string;
     // hash?: string;
+    data?: any;
     title?: string;
     back?: AppRoute;
 }
