@@ -1,8 +1,7 @@
 import * as Azdo from '../api/azdo.ts';
 import type { AppNav } from './app.tsx';
-import type { Database } from '../api/db.ts';
 
-import React, { useState } from 'react'
+import React from 'react'
 
 import { Card } from "azure-devops-ui/Card";
 import { Page } from "azure-devops-ui/Page";
@@ -10,21 +9,10 @@ import { Header, TitleSize } from "azure-devops-ui/Header";
 import { Button } from "azure-devops-ui/Button";
 
 function HomePage(p: HomePageProps) {
-    const [_sessionInfo, _setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
-
-    // HACK: force rerendering for server sync
-    const [pollHack, setPollHack] = React.useState(Math.random());
-    React.useEffect(() => { poll(); }, [pollHack]);
-
-    if (!p) { console.warn("No props in HomePage"); }
-
-    React.useEffect(() => { init() }, []);
-    async function init() {
-        console.log("HomePage init");
-
-        const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
+    React.useEffect(() => {
+        const interval_id = setInterval(() => { poll(); }, 1000);
         return () => { clearInterval(interval_id); };
-    }
+    }, []);
 
     async function poll() {
         console.log("HomePage poll");
@@ -33,9 +21,12 @@ function HomePage(p: HomePageProps) {
     async function showHuddlesPage() {
         await p.appNav.navTo({
             view: "huddles",
-            data: "",
             back: p.appNav.current,
         });
+    }
+
+    async function purgeAllDocuments() {
+        Azdo.purgeAllDocuments(p.sessionInfo);
     }
 
     return (
@@ -50,6 +41,11 @@ function HomePage(p: HomePageProps) {
                             text={"Show Huddles"}
                             onClick={() => showHuddlesPage()}
                         />
+                        <Button
+                            text={"Purge"}
+                            danger={true}
+                            onClick={() => purgeAllDocuments()}
+                        />
                     </div>
                 </Card>
             </div>
@@ -59,7 +55,6 @@ function HomePage(p: HomePageProps) {
 
 export interface HomePageProps {
     appNav: AppNav;
-    database: Database;
     sessionInfo: Azdo.SessionInfo;
 }
 

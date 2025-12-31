@@ -10,13 +10,10 @@ import { makeHeaderBackButtonProps } from '../api/util.ts';
 import HuddlePage from './HuddlePage.tsx';
 
 function App(p: AppProps) {
-    const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
+    // const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
     const [route, setRoute] = useState<AppRoute>({ view: "loading", data: "" })
     const [database, setDatabase] = useState<db.Database>(db.makeDatabase());
-
-    // HACK: force rerendering for server sync
-    const [pollHack, setPollHack] = React.useState(Math.random());
-    React.useEffect(() => { poll(); }, [pollHack]);
+    const sessionRef = React.useRef<Azdo.SessionInfo>(p.sessionInfo)
 
     async function navTo(route: AppRoute) {
         console.log("nav: to", route);
@@ -40,16 +37,20 @@ function App(p: AppProps) {
     }
 
     // initialize the app
-    React.useEffect(() => { init() }, []);
+    React.useEffect(() => {
+        const interval_id = setInterval(() => { poll(); }, 1000);
+        return () => { clearInterval(interval_id); };
+    }, []);
+    React.useEffect(() => { init(); return; }, []);
     async function init() {
-        let memDoc = await db.loadMembers(database, sessionInfo);
+        let memDoc = await db.loadMembers(database, sessionRef.current);
         if (memDoc) {
             setDatabase({ ...database });
         } else {
             console.error("init: failed to load members document");
         }
 
-        let myself = await db.loadMyself(database, sessionInfo);
+        let myself = await db.loadMyself(database, sessionRef.current);
         if (myself) {
             console.log("init: myself", database.myself);
             setDatabase({ ...database });
@@ -60,32 +61,96 @@ function App(p: AppProps) {
         const hash = await nav.getHash();
         console.log("init: nav params", query, hash);
         setRoute({ view: "home", data: "" }); // TODO: route via query/hash
-
-        const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
-        return () => { clearInterval(interval_id); };
     }
 
     async function poll() {
         // refresh session info 
-        if (Date.now() > sessionInfo.refreshAfter) {
-            console.log("poll: refresh token", sessionInfo.refreshAfter);
+        if (Date.now() > sessionRef.current.refreshAfter) {
+            console.log("poll: refresh token", sessionRef.current.refreshAfter);
             let newSessionInfo = await Azdo.refreshSessionInfo();
             if (!newSessionInfo) {
                 console.error("poll: refresh token failed");
             } else {
-                setSessionInfo(newSessionInfo);
+                sessionRef.current = newSessionInfo
+                // setSessionInfo(newSessionInfo);
                 console.log("poll: refreshed token", newSessionInfo);
             }
         }
 
         // refresh myself
         if (!database.myself) {
-            let myself = await db.loadMyself(database, sessionInfo);
+            let myself = await db.loadMyself(database, sessionRef.current);
             if (myself) {
                 console.log("poll: myself", database.myself);
                 setDatabase({ ...database });
             }
         }
+    }
+
+    async function onChangeHuddle(doc: db.HuddleStoredDocument) {
+        // TODO
+        console.warn("TODO: onChangeHuddle", doc)
+
+        //     let prevInfosDoc = await Azdo.getSharedDocument<HuddleInfosStoredDocument>(
+        //         main_collection_id,
+        //         main_huddles_document_id,
+        //         session);
+        //     if (!prevInfosDoc) {
+        //         console.error("editHuddle: failed to get main_huddles_document_id")
+        //         return null;
+        //     }
+
+        //     let prevHuddleInfo = prevInfosDoc.huddleInfos.items.find(v => v.id === doc.id)
+        //     if (!prevHuddleInfo) {
+        //         console.error("editHuddle: failed to find huddle info")
+        //         return null;
+        //     }
+
+        //     let didChangeHuddleInfo = false
+        //     if (prevHuddleInfo.name !== doc.name) { didChangeHuddleInfo = true; prevHuddleInfo.name = doc.name }
+
+        //     if (didChangeHuddleInfo) {
+        //         let nextInfosDoc = await Azdo.editSharedDocument(
+        //             main_collection_id,
+        //             prevInfosDoc,
+        //             session
+        //         )
+        //         if (!nextInfosDoc) {
+        //             console.error("editHuddle: failed to save huddle info")
+        //             return null;
+        //         }
+        //     }
+
+        //     let prevDoc = await Azdo.getSharedDocument<HuddleStoredDocument>(
+        //         huddle_collection_id,
+        //         doc.id,
+        //         session);
+        //     if (!prevDoc) {
+        //         console.error("editHuddle: failed to get huddle doc")
+        //         return null;
+        //     }
+
+        //     let didChangeHuddle = didChangeHuddleInfo
+        //     if (doc.workItemQuery?.areaPath !== prevDoc.workItemQuery?.areaPath) { didChangeHuddle = true }
+
+        //     if (didChangeHuddle) {
+        //         let nextDoc = await Azdo.editSharedDocument<HuddleStoredDocument>(
+        //             huddle_collection_id,
+        //             doc,
+        //             session);
+        //         if (!nextDoc) {
+        //             console.error("editHuddle: failed")
+        //             return null;
+        //         }
+        //         return nextDoc;
+        //     } else {
+        //         return prevDoc;
+        //     }
+    }
+
+    async function onChangeHuddles(doc: db.HuddleInfosStoredDocument) {
+        // TODO
+        console.warn("TODO: onChangeHuddles", doc)
     }
 
     switch (route.view) {
@@ -106,8 +171,7 @@ function App(p: AppProps) {
             return (
                 <HomePage
                     appNav={createAppNav(route)}
-                    database={database}
-                    sessionInfo={sessionInfo}
+                    sessionInfo={sessionRef.current}
                 />
             )
         }
@@ -116,13 +180,14 @@ function App(p: AppProps) {
                 <HuddlesHomePage
                     appNav={createAppNav(route)}
                     database={database}
-                    sessionInfo={sessionInfo}
+                    sessionInfo={sessionRef.current}
+                    onChange={onChangeHuddles}
                 />
             )
         }
         case "huddle": {
-            let huddleInfo = route.data as db.HuddleInfo
-            if (!huddleInfo || typeof huddleInfo !== "object") {
+            let huddle = route.data
+            if (!huddle) {
                 console.error("Invalid data for huddle:", route.data)
                 navTo({
                     view: "error",
@@ -131,32 +196,29 @@ function App(p: AppProps) {
                 });
                 return <></>
             }
-
-            if (!huddleInfo.id) {
-                navTo({
-                    view: "error",
-                    data: "Invalid id for huddle",
-                    back: route.back,
-                });
-                return <></>
-            }
-
-            if (!huddleInfo.name) {
-                navTo({
-                    view: "error",
-                    data: "Invalid name for huddle",
-                    back: route.back,
-                });
-                return <></>
-            }
-
             return (
                 <HuddlePage
                     appNav={createAppNav(route)}
                     database={database}
-                    sessionInfo={sessionInfo}
-                    huddleInfo={huddleInfo}
+                    sessionInfo={sessionRef.current}
+                    id={huddle}
+                    onChange={onChangeHuddle}
                 />
+            )
+        }
+        case "error": {
+            let bbProps: any | undefined = (route) ? makeHeaderBackButtonProps(createAppNav(route)) : undefined // HACK: any
+            let message = route.data || "no error message"
+            return (
+                <Page>
+                    <Header
+                        title={"Error"}
+                        titleSize={TitleSize.Large}
+                        backButtonProps={bbProps} />
+                    <div className="page-content page-content-top">
+                        <Card>{message}</Card>
+                    </div>
+                </Page>
             )
         }
         default: {

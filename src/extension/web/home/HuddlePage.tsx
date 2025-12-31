@@ -13,37 +13,43 @@ import type { IHeaderCommandBarItem } from 'azure-devops-ui/HeaderCommandBar';
 
 
 function HuddlePage(p: HuddlePageProps) {
-    const [huddleInfo, setHuddleInfo] = React.useState<Db.HuddleInfo>(p.huddleInfo)
     const [huddle, setHuddle] = React.useState<Db.HuddleStoredDocument | null>(null)
     const [isEditingHuddle, setIsEditingHuddle] = React.useState<boolean>(false);
 
-    // HACK: force rerendering for server sync
-    const [pollHack, setPollHack] = React.useState(Math.random());
-    React.useEffect(() => { poll(); }, [pollHack]);
-
-    React.useEffect(() => { init() }, []);
+    React.useEffect(() => { init(); return; }, []);
     async function init() {
-        console.log("HuddlePage init");
+        let doc = await Azdo.getSharedDocument<Db.HuddleStoredDocument>(
+            Db.huddle_collection_id,
+            p.id,
+            p.sessionInfo);
+        if (!doc) {
+            console.warn("getHuddle: does not exist")
 
-        let huddleInfo = await Db.getHuddleInfo(p.huddleInfo.id, p.sessionInfo);
-        if (!huddleInfo) {
-            console.log("HuddlePage: failed to load huddle info: ", p.huddleInfo.id)
-            return
+            let doc2 = await Azdo.getSharedDocument<Db.HuddleInfosStoredDocument>(
+                Db.main_collection_id,
+                Db.main_huddles_document_id,
+                p.sessionInfo);
+            if (doc2) {
+                let found = doc2.huddleInfos.items.find(h => h.id === p.id)
+                doc = {
+                    id: p.id,
+                    name: found?.name || "New Huddle", // TODO
+                }
+            }
+            else {
+                doc = {
+                    id: p.id,
+                    name: "New Huddle", // TODO
+                }
+            }
         }
-
-        setHuddleInfo(huddleInfo)
-
-        let huddle = await Db.getHuddle(huddleInfo, p.database, p.sessionInfo)
-        if (!huddle) {
-            console.log("HuddlePage: failed to load huddle: ", p.huddleInfo.id)
-            return
-        }
-
-        setHuddle(huddle)
-
-        const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
-        return () => { clearInterval(interval_id); };
+        setHuddle(doc);
     }
+
+    React.useEffect(() => {
+        const interval_id = setInterval(() => { poll(); }, 1000);
+        return () => { clearInterval(interval_id); };
+    }, []);
 
     async function poll() {
         console.log("HuddlePage poll");
@@ -52,25 +58,21 @@ function HuddlePage(p: HuddlePageProps) {
     async function onCommitEditHuddle(data: EditHuddlePanelValues) {
         try {
             if (!huddle) { return } // TODO: assert
-            
+
             let nextHuddle: Db.HuddleStoredDocument = { ...huddle }
             nextHuddle.name = data.name
             nextHuddle.workItemQuery = {
                 areaPath: data.areaPath
             }
-            let saved = await Db.editHuddle(nextHuddle, p.sessionInfo);
+
+            let saved = await Azdo.upsertSharedDocument(Db.huddle_collection_id, nextHuddle, p.sessionInfo)
             if (!saved) {
                 console.error("onCommitEditHuddle: edit failed")
                 return
             }
 
-            let newHuddleInfo: Db.HuddleInfo = {
-                id: saved.id,
-                name: saved.name,
-                isDeleted: false,
-            }
             setHuddle(saved);
-            setHuddleInfo(newHuddleInfo)
+            p.onChange(huddle).catch() // fire-and-forget
         }
         finally {
             setIsEditingHuddle(false);
@@ -101,43 +103,52 @@ function HuddlePage(p: HuddlePageProps) {
         return items
     }
 
-    return (
-        <Page>
-            <Header
-                title={huddleInfo.name}
-                titleSize={TitleSize.Large}
-                backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
-                commandBarItems={getHeaderCommandBarItems()}
-            />
-            {
-                (huddle) && (
-                    <div className="page-content page-content-top">
-                        <Card>
-                            <div className="flex-column">
-                                {huddleInfo.id}
-                            </div>
-                        </Card>
-                    </div>
-                )
-            }
-            {
-                (huddle && isEditingHuddle) && (
-                    <EditHuddlePanel
-                        huddle={huddle}
-                        onCommit={onCommitEditHuddle}
-                        onCancel={onCancelEditHuddle}
-                    />
-                )
-            }
-        </Page>
-    )
+    if (huddle) {
+        return (
+            <Page>
+                <Header
+                    title={huddle.name}
+                    titleSize={TitleSize.Large}
+                    backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
+                    commandBarItems={getHeaderCommandBarItems()}
+                />
+                <div className="page-content page-content-top">
+                    <Card>
+                        <div className="flex-column">
+                            {huddle.id}
+                        </div>
+                    </Card>
+                </div>
+                {
+                    (isEditingHuddle) && (
+                        <EditHuddlePanel
+                            huddle={huddle}
+                            onCommit={onCommitEditHuddle}
+                            onCancel={onCancelEditHuddle}
+                        />
+                    )
+                }
+            </Page>
+        )
+    } else {
+        return (
+            <Page>
+                <Header
+                    title={""}
+                    titleSize={TitleSize.Large}
+                    backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
+                />
+            </Page>
+        )
+    }
 }
 
 export interface HuddlePageProps {
     appNav: AppNav;
     database: Db.Database;
     sessionInfo: Azdo.SessionInfo;
-    huddleInfo: Db.HuddleInfo;
+    id: string;
+    onChange: (huddle: Db.HuddleStoredDocument) => Promise<void>;
 }
 
 export default HuddlePage;

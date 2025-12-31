@@ -14,37 +14,29 @@ import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
     const [isAddingHuddle, setIsAddingHuddle] = React.useState<boolean>(false);
-    const [huddleInfos, setHuddleInfos] = React.useState<Db.HuddleInfo[] | null>(null)
+    const [huddles, setHuddles] = React.useState<Db.HuddleInfosStoredDocument | null>(null)
 
-    // HACK: force rerendering for server sync
-    const [pollHack, setPollHack] = React.useState(Math.random());
-    React.useEffect(() => { poll(); }, [pollHack]);
-
-    React.useEffect(() => { init() }, []);
+    React.useEffect(() => { init(); return; }, []);
     async function init() {
-        console.log("HuddlesHomePage init");
-
-        try {
-            let huddles = await Db.getMainHuddlesStoredDocument(p.sessionInfo);
-            if (!huddles) {
-                console.error("HuddlesHomePage: no huddle info doc")
-                return
+        let doc = await Azdo.getSharedDocument<Db.HuddleInfosStoredDocument>(
+            Db.main_collection_id,
+            Db.main_huddles_document_id,
+            p.sessionInfo);
+        if (!doc) {
+            doc = {
+                id: Db.main_huddles_document_id,
+                huddleInfos: {
+                    items: []
+                }
             }
-
-            let huddleInfos = huddles.huddleInfos
-            if (!huddleInfos) {
-                console.error("HuddlesHomePage: no huddle infos")
-                return
-            }
-            setHuddleInfos(huddleInfos.items || [])
         }
-        catch {
-            console.error("error doc")
-        }
-
-        const interval_id = setInterval(() => { setPollHack(Math.random()); }, 1000);
-        return () => { clearInterval(interval_id); };
+        setHuddles(doc);
     }
+
+    React.useEffect(() => {
+        const interval_id = setInterval(() => { poll(); }, 1000);
+        return () => { clearInterval(interval_id); };
+    }, []);
 
     async function poll() {
         console.log("HuddlesHomePage poll");
@@ -63,13 +55,28 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
             name: data.name,
             isDeleted: false,
         }
-        await Db.newHuddleInfo(huddleInfo, p.sessionInfo)
 
-        let nextHuddleInfos = [
-            ...(huddleInfos || []),
-            huddleInfo
-        ]
-        setHuddleInfos(nextHuddleInfos);
+        let anyHuddles: any = huddles || {}
+
+        let nextHuddles: Db.HuddleInfosStoredDocument = {
+            ...anyHuddles,
+            huddleInfos: {
+                ...anyHuddles.huddleInfos,
+                items: [
+                    ...anyHuddles.huddleInfos.items,
+                    huddleInfo,
+                ]
+            },
+        }
+
+        let newDoc = await Azdo.upsertSharedDocument(Db.main_collection_id, nextHuddles, p.sessionInfo)
+        if (!newDoc) {
+            console.error("newHuddle: upsert failed")
+            return;
+        }
+
+        setHuddles(newDoc);
+        p.onChange(newDoc).catch(); // fire-and-forget
     }
 
     async function onCancelNewHuddle() {
@@ -80,19 +87,19 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         await Db.deleteHuddle(huddle, p.sessionInfo);
     }
 
-    async function onSelectHuddle(huddle: Db.HuddleInfo) {
-        console.log("onSelectHuddle:", huddle)
+    async function onSelectHuddle(huddleInfo: Db.HuddleInfo) {
+        console.log("onSelectHuddle:", huddleInfo)
 
         p.appNav.navTo({
             view: `huddle`,
-            data: huddle,
-            title: `huddle-${huddle.id}`,
+            data: huddleInfo.id,
+            title: `huddle-${huddleInfo.id}`,
             back: p.appNav.current,
         })
     }
 
     function listHuddles(): JSX.Element {
-        let dbHuddles = huddleInfos
+        let dbHuddles = huddles?.huddleInfos?.items
         if (!dbHuddles) {
             // TODO: loading spinner?
             return <></>
@@ -169,6 +176,7 @@ export interface HuddlesHomePageProps {
     appNav: AppNav;
     database: Db.Database;
     sessionInfo: Azdo.SessionInfo;
+    onChange: (huddles: Db.HuddleInfosStoredDocument) => Promise<void>;
 }
 
 export default HuddlesHomePage

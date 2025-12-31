@@ -75,57 +75,22 @@ export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => 
     }
 }
 
-export async function getMainHuddlesStoredDocument(session: Azdo.SessionInfo): Promise<HuddleInfosStoredDocument | null> {
-    let empty: HuddleInfosStoredDocument = {
-        id: main_huddles_document_id,
-        huddleInfos: {
-            items: []
-        }
-    }
-    let doc = await Azdo.getOrCreateSharedDocument<HuddleInfosStoredDocument>(
+export async function getMainHuddlesStoredDocument(session: Azdo.SessionInfo): Promise<HuddleInfosStoredDocument> {
+    let doc = await Azdo.getSharedDocument<HuddleInfosStoredDocument>(
         main_collection_id,
         main_huddles_document_id,
-        empty,
         session);
     if (!doc) {
-        console.error("loadHuddles: failed")
-        return null;
+        console.error("loadHuddles: missing")
+        doc = {
+            id: main_huddles_document_id,
+            huddleInfos: {
+                items: []
+            }
+        }
     }
-
-    // syncing(
-    //     doc.huddleInfos.items,
-    //     db.huddles.items,
-    //     (s, t) => s.id === t.id,
-    //     t => t.isDeleted = true,
-    //     t => {
-    //         return {
-    //             id: t.id,
-    //             name: t.name,
-    //             isReady: false,
-    //             isDeleted: false,
-    //         }
-    //     })
 
     return doc;
-}
-
-export async function newHuddleInfo(data: HuddleInfo, session: Azdo.SessionInfo): Promise<void> {
-    let doc = await getMainHuddlesStoredDocument(session);
-    if (!doc) {
-        console.error("newHuddle: get failed")
-        return;
-    }
-
-    if (!doc.huddleInfos) { doc.huddleInfos = { items: [] } }
-    if (!doc.huddleInfos.items) { doc.huddleInfos.items = [] }
-
-    doc.huddleInfos.items.push(data);
-
-    let newDoc = await Azdo.editSharedDocument(main_collection_id, doc, session)
-    if (!newDoc) {
-        console.error("newHuddle: edit failed")
-        return;
-    }
 }
 
 export async function deleteHuddle(data: HuddleInfo, session: Azdo.SessionInfo): Promise<void> {
@@ -179,87 +144,6 @@ export async function getHuddleInfo(id: string, session: Azdo.SessionInfo): Prom
     }
 
     return huddle
-}
-
-export async function getHuddle(info: HuddleInfo, database: Database, session: Azdo.SessionInfo): Promise<HuddleStoredDocument | null> {
-    let empty: HuddleStoredDocument = {
-        id: main_huddles_document_id,
-        name: info.name,
-    }
-    let doc = await Azdo.getOrCreateSharedDocument<HuddleStoredDocument>(
-        huddle_collection_id,
-        info.id,
-        empty,
-        session);
-    if (!doc) {
-        console.error("getHuddle: failed")
-        return null;
-    }
-
-    if (!database) {
-        console.error("getHuddle: no db")
-        // TODO: sync?
-    }
-
-    return doc;
-}
-
-export async function editHuddle(doc: HuddleStoredDocument, session: Azdo.SessionInfo): Promise<HuddleStoredDocument | null> {
-    let prevInfosDoc = await Azdo.getSharedDocument<HuddleInfosStoredDocument>(
-        main_collection_id,
-        main_huddles_document_id,
-        session);
-    if (!prevInfosDoc) {
-        console.error("editHuddle: failed to get main_huddles_document_id")
-        return null;
-    }
-
-    let prevHuddleInfo = prevInfosDoc.huddleInfos.items.find(v => v.id === doc.id)
-    if (!prevHuddleInfo) {
-        console.error("editHuddle: failed to find huddle info")
-        return null;
-    }
-
-    let didChangeHuddleInfo = false
-    if (prevHuddleInfo.name !== doc.name) { didChangeHuddleInfo = true; prevHuddleInfo.name = doc.name }
-
-    if (didChangeHuddleInfo) {
-        let nextInfosDoc = await Azdo.editSharedDocument(
-            main_collection_id,
-            prevInfosDoc,
-            session
-        )
-        if (!nextInfosDoc) {
-            console.error("editHuddle: failed to save huddle info")
-            return null;
-        }
-    }
-
-    let prevDoc = await Azdo.getSharedDocument<HuddleStoredDocument>(
-        huddle_collection_id,
-        doc.id,
-        session);
-    if (!prevDoc) {
-        console.error("editHuddle: failed to get huddle doc")
-        return null;
-    }
-
-    let didChangeHuddle = didChangeHuddleInfo
-    if (doc.workItemQuery?.areaPath !== prevDoc.workItemQuery?.areaPath) { didChangeHuddle = true }
-
-    if (didChangeHuddle) {
-        let nextDoc = await Azdo.editSharedDocument<HuddleStoredDocument>(
-            huddle_collection_id,
-            doc,
-            session);
-        if (!nextDoc) {
-            console.error("editHuddle: failed")
-            return null;
-        }
-        return nextDoc;
-    } else {
-        return prevDoc;
-    }
 }
 
 // 

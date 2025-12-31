@@ -4,6 +4,7 @@ import {
     type IExtensionDataService,
     type IHostNavigationService,
 } from 'azure-devops-extension-api';
+import { main_collection_id } from './db';
 
 export async function restGet(url: string, bearertoken: string): Promise<any> {
     const response = await fetch(url, {
@@ -38,15 +39,6 @@ export interface SessionInfo {
     refreshAfter: number;
     organization: string;
 }
-
-export const zeroSessionInfo: SessionInfo =
-{
-    isValid: false,
-    bearerToken: "",
-    appToken: "",
-    refreshAfter: 0,
-    organization: "",
-};
 
 export async function refreshSessionInfo(): Promise<SessionInfo | null> {
     try {
@@ -102,40 +94,6 @@ export interface StoredDocument {
     __etag?: number;
 }
 
-export async function getOrCreateSharedDocument<TDoc extends StoredDocument>(
-    cid: string,
-    did: string,
-    blank: TDoc,
-    session: SessionInfo
-): Promise<TDoc | null> {
-    let doc = await getSharedDocument<TDoc>(
-        cid,
-        did,
-        session
-    );
-    if (!doc) {
-        console.log("loadDocument: does not exist yet");
-        doc = {
-            ...blank,
-            id: did, // in case the caller forgot
-        }
-
-        let newDoc = await newSharedDocument(
-            cid,
-            doc,
-            session
-        )
-        if (!newDoc) {
-            console.error("loadDocument: failed to create document");
-            return null;
-        }
-        doc = newDoc;
-    }
-
-    console.log("loadHuddles: loaded", doc);
-    return doc;
-}
-
 export async function getSharedDocument<T extends StoredDocument>(colId: string, docId: string, session: SessionInfo): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
     const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
@@ -144,7 +102,7 @@ export async function getSharedDocument<T extends StoredDocument>(colId: string,
         console.log("get doc (shared): ", colId, docId, doc);
         return doc as T;
     }
-    catch(e) {
+    catch (e) {
         console.warn("get doc (shared): ", colId, docId, e);
         return null;
     }
@@ -203,5 +161,16 @@ export async function deleteSharedDocument(colId: string, docId: string, session
     catch {
         console.warn("delete doc (shared): ", colId, docId, false);
         return false;
+    }
+}
+
+export async function purgeAllDocuments(session: SessionInfo): Promise<void> {
+    const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
+    const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
+
+    let x = await dataManager.getDocuments(main_collection_id);
+    console.log("TODO: PURGE", x)
+    for (let d of x) {
+        deleteSharedDocument(main_collection_id, d.id, session)
     }
 }
