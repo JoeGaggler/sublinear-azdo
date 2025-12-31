@@ -17,10 +17,6 @@ export const my_connectiondata_document_id = "connection_data";
 // collection of each huddle
 export const huddle_collection_id = "huddle";
 
-export interface MainMembersStoredDocument extends StoredDocument {
-    members: Members;
-}
-
 //
 // Database schema
 //
@@ -34,21 +30,6 @@ export function makeDatabase(): Database {
 export interface Database {
     myself?: Myself;
     members: Members;
-}
-
-export interface Myself {
-    id: string;
-    displayName: string;
-}
-
-export interface Members {
-    items: Member[];
-}
-
-export interface Member {
-    id: string;
-    displayName: string;
-    timestamp: number;
 }
 
 //
@@ -71,6 +52,11 @@ export interface HuddleInfo {
 
 export interface HuddleStoredDocument extends StoredDocument {
     name: string;
+    workItemQuery?: HuddleWorkItemQuery
+}
+
+export interface HuddleWorkItemQuery {
+    areaPath: string
 }
 
 export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => boolean, removing: (t: T) => void, create: (from: S) => T): void {
@@ -218,9 +204,72 @@ export async function getHuddle(info: HuddleInfo, database: Database, session: A
     return doc;
 }
 
+export async function editHuddle(doc: HuddleStoredDocument, session: Azdo.SessionInfo): Promise<HuddleStoredDocument | null> {
+    let prevInfosDoc = await Azdo.getSharedDocument<HuddleInfosStoredDocument>(
+        main_collection_id,
+        main_huddles_document_id,
+        session);
+    if (!prevInfosDoc) {
+        console.error("editHuddle: failed to get main_huddles_document_id")
+        return null;
+    }
+
+    let prevHuddleInfo = prevInfosDoc.huddleInfos.items.find(v => v.id === doc.id)
+    if (!prevHuddleInfo) {
+        console.error("editHuddle: failed to find huddle info")
+        return null;
+    }
+
+    let didChangeHuddleInfo = false
+    if (prevHuddleInfo.name !== doc.name) { didChangeHuddleInfo = true; prevHuddleInfo.name = doc.name }
+
+    if (didChangeHuddleInfo) {
+        let nextInfosDoc = await Azdo.editSharedDocument(
+            main_collection_id,
+            prevInfosDoc,
+            session
+        )
+        if (!nextInfosDoc) {
+            console.error("editHuddle: failed to save huddle info")
+            return null;
+        }
+    }
+
+    let prevDoc = await Azdo.getSharedDocument<HuddleStoredDocument>(
+        huddle_collection_id,
+        doc.id,
+        session);
+    if (!prevDoc) {
+        console.error("editHuddle: failed to get huddle doc")
+        return null;
+    }
+
+    let didChangeHuddle = didChangeHuddleInfo
+    if (doc.workItemQuery?.areaPath !== prevDoc.workItemQuery?.areaPath) { didChangeHuddle = true }
+
+    if (didChangeHuddle) {
+        let nextDoc = await Azdo.editSharedDocument<HuddleStoredDocument>(
+            huddle_collection_id,
+            doc,
+            session);
+        if (!nextDoc) {
+            console.error("editHuddle: failed")
+            return null;
+        }
+        return nextDoc;
+    } else {
+        return prevDoc;
+    }
+}
+
 // 
 // Myself functions
 //
+
+export interface Myself {
+    id: string;
+    displayName: string;
+}
 
 export async function loadMyself(db: Database, session: Azdo.SessionInfo): Promise<Myself | null> {
     let data = await Azdo.getConnectionData(session);
@@ -238,6 +287,20 @@ export async function loadMyself(db: Database, session: Azdo.SessionInfo): Promi
 ///
 /// Member functions
 ///
+
+export interface Members {
+    items: Member[];
+}
+
+export interface Member {
+    id: string;
+    displayName: string;
+    timestamp: number;
+}
+
+export interface MainMembersStoredDocument extends StoredDocument {
+    members: Members;
+}
 
 export async function loadMembers(db: Database, session: Azdo.SessionInfo): Promise<MainMembersStoredDocument | null> {
     let membersDoc = await Azdo.getSharedDocument<MainMembersStoredDocument>(

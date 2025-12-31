@@ -14,7 +14,7 @@ import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 
 function HuddlesHomePage(p: HuddlesHomePageProps) {
     const [isAddingHuddle, setIsAddingHuddle] = React.useState<boolean>(false);
-    const [huddleInfos, setHuddleInfos] = React.useState<Db.HuddleInfo[]>([])
+    const [huddleInfos, setHuddleInfos] = React.useState<Db.HuddleInfo[] | null>(null)
 
     // HACK: force rerendering for server sync
     const [pollHack, setPollHack] = React.useState(Math.random());
@@ -66,7 +66,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         await Db.newHuddleInfo(huddleInfo, p.sessionInfo)
 
         let nextHuddleInfos = [
-            ...huddleInfos,
+            ...(huddleInfos || []),
             huddleInfo
         ]
         setHuddleInfos(nextHuddleInfos);
@@ -93,6 +93,11 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
 
     function listHuddles(): JSX.Element {
         let dbHuddles = huddleInfos
+        if (!dbHuddles) {
+            // TODO: loading spinner?
+            return <></>
+        }
+
         dbHuddles = dbHuddles.filter(h => !h.isDeleted)
         dbHuddles.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
         // let selection = new ListSelection(true);
