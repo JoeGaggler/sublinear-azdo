@@ -28,6 +28,95 @@ export async function restGet(url: string, bearertoken: string): Promise<any> {
     }
 }
 
+export async function restPost(url: string, body: any, bearertoken: string): Promise<any> {
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${bearertoken}`,
+            "Content-Type": "application/json",
+            "X-Bearer": bearertoken,
+        },
+        body: JSON.stringify(body)
+    });
+    if (response.ok) {
+        const data = await response.json();
+        const ctok = response.headers.get("x-ms-continuationtoken");
+        if (ctok) {
+            console.log("Continuation token:", ctok);
+        }
+        // console.log(data);
+        return data;
+    } else {
+        console.log("Error fetching azdo data", response.statusText);
+    }
+}
+
+//
+// Work Items
+//
+
+export interface QueryWorkItemsResult {
+    queryType?: string;
+    queryResultType?: string;
+    asOf?: string;
+    workItems?: QueryWorkItemsWorkItem[]
+}
+
+export interface QueryWorkItemsWorkItem {
+    id?: number
+    url?: string
+}
+
+export async function queryWorkItems(session: SessionInfo) {
+    // POST https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?timePrecision={timePrecision}&$top={$top}&api-version=7.2-preview.2
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=101&api-version=7.2-preview.2`
+
+    let body = {
+        query: "Select [System.Id], [System.Title], [System.State] From WorkItems Where [System.WorkItemType] <> 'FOO' AND [State] <> 'FOO' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc ASOF '2026-01-01T02:00:00Z'"
+    }
+
+    let response = await restPost(url, body, session.bearerToken) as QueryWorkItemsResult
+    console.log("queryWorkItems:", response)
+    return response
+
+    // let wi1 = response.workItems?.[0]
+    // console.log("queryWorkItems 1:", wi1?.id, wi1?.url)
+
+    // let r1 = await getWorkItemRevisions(3, session)
+    // console.log("r1", r1.count, r1)
+    // let r2 = r1.value[0].fields?.['System.ChangedDate']
+    // console.log("r2", r2)
+    // let r3 = new Date(r2!)
+    // console.log("r3", r3, r3.getTime(), r3.getTime(), new Date(r3.getTime()))
+    // console.log("r3s", new Date(r3.getTime()).toUTCString(), new Date(r3.getTime()).toISOString())
+}
+
+export interface AzdoResult<T> {
+    count: number
+    value: T[]
+}
+
+export interface GetWorkItemRevisionsValue {
+    id?: number,
+    rev?: number,
+    fields?: WorkItemFields
+}
+
+export interface WorkItemFields {
+    "System.Id"?: number
+    "System.Rev"?: number
+    "System.State"?: string
+    "System.ChangedDate"?: string
+}
+
+export async function getWorkItemRevisions(id: number, session: SessionInfo) {
+    //GET https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{id}/revisions?$top={$top}&$skip={$skip}&$expand={$expand}&api-version=7.1
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}/revisions?$expand=all&api-version=7.1`
+    let response = await restGet(url, session.bearerToken) as QueryWorkItemsResult
+    console.log("queryWorkItems:", response)
+    return response as AzdoResult<GetWorkItemRevisionsValue>
+}
+
 //
 // Session
 //
@@ -38,6 +127,8 @@ export interface SessionInfo {
     appToken: string;
     refreshAfter: number;
     organization: string;
+    team: string;
+    project: string;
 }
 
 export async function refreshSessionInfo(): Promise<SessionInfo | null> {
@@ -47,6 +138,12 @@ export async function refreshSessionInfo(): Promise<SessionInfo | null> {
         let host = SDK.getHost()
         console.log("Host:", host);
 
+        let team = SDK.getTeamContext()
+        console.log("Team:", team)
+
+        let web = SDK.getWebContext()
+        console.log("Web:", web)
+
         let seconds = 60;
         return {
             isValid: true,
@@ -54,6 +151,8 @@ export async function refreshSessionInfo(): Promise<SessionInfo | null> {
             appToken: appToken,
             refreshAfter: Date.now() + (1000 * seconds),
             organization: host.name,
+            team: team.id,
+            project: web.project.id,
         };
     }
     catch (err) {

@@ -71,6 +71,10 @@ function HuddlePage(p: HuddlePageProps) {
         setIsEditingHuddle(true)
     }
 
+    async function startSession() {
+        
+    }
+
     function getHeaderCommandBarItems(): IHeaderCommandBarItem[] {
         let items: IHeaderCommandBarItem[] = []
 
@@ -80,9 +84,20 @@ function HuddlePage(p: HuddlePageProps) {
             iconProps: { iconName: "Edit" },
             onActivate: () => { showEditHuddlePanel(); },
             isPrimary: true,
-            important: true,
+            important: false,
         }
         items.push(editItem)
+
+        // TODO: only if config is valid
+        let startItem: IHeaderCommandBarItem = {
+            id: "startSession",
+            text: "Start Session",
+            iconProps: { iconName: "Play" },
+            onActivate: () => { startSession(); },
+            isPrimary: true,
+            important: true,
+        }
+        items.push(startItem)
 
         return items
     }

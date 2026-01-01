@@ -35,7 +35,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         setIsAddingHuddle(true);
     }
 
-    async function navToHuddleInfo(target: Db.HuddleInfo) {
+    async function navToHuddleInfo(target: Db.HuddleItem) {
         p.appNav.navTo({
             view: "huddle",
             data: target.id,
@@ -70,14 +70,14 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         setIsAddingHuddle(false);
     }
 
-    async function onDeleteHuddle(huddle: Db.HuddleInfo) {
+    async function onDeleteHuddle(huddle: Db.HuddleItem) {
         let nextHuddles = await Db.deleteHuddle(huddle, p.sessionInfo);
         if (nextHuddles) {
             setHuddles(nextHuddles);
         }
     }
 
-    async function onSelectHuddle(huddleInfo: Db.HuddleInfo) {
+    async function onSelectHuddle(huddleInfo: Db.HuddleItem) {
         console.log("onSelectHuddle:", huddleInfo)
         navToHuddleInfo(huddleInfo);
     }
@@ -89,11 +89,10 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
             return <></>
         }
 
-        dbHuddles = dbHuddles.filter(h => !h.isDeleted)
         dbHuddles.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
         // let selection = new ListSelection(true);
         return <ScrollableList
-            itemProvider={new ArrayItemProvider<Db.HuddleInfo>(dbHuddles)}
+            itemProvider={new ArrayItemProvider<Db.HuddleItem>(dbHuddles)}
             selection={undefined}
             onSelect={(_event, data) => onSelectHuddle(data.data)}
             selectRowOnClick={true}
@@ -102,7 +101,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
                 (idx, huddle, details) => {
                     return <ListItem key={`list-item-${idx}`} index={idx} details={details}>
                         <Header
-                            title={`Huddle - ${huddle.name}`}
+                            title={huddle.name}
                             titleSize={TitleSize.Small}
                             commandBarItems={[
                                 {

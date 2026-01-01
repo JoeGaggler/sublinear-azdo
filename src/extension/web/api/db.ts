@@ -37,17 +37,16 @@ export interface Database {
 //
 
 export interface HuddleListStoredDocument extends StoredDocument {
-    huddleInfos: HuddleInfos;
+    huddleInfos: HuddleItems;
 }
 
-export interface HuddleInfos {
-    items: HuddleInfo[];
+export interface HuddleItems {
+    items: HuddleItem[];
 }
 
-export interface HuddleInfo {
+export interface HuddleItem {
     id: string;
     name: string;
-    isDeleted: boolean
 }
 
 export interface HuddleStoredDocument extends StoredDocument {
@@ -93,7 +92,7 @@ export async function requireHuddleListStoredDocument(session: Azdo.SessionInfo)
     return doc;
 }
 
-export async function deleteHuddle(data: HuddleInfo, session: Azdo.SessionInfo): Promise<HuddleListStoredDocument | null> {
+export async function deleteHuddle(data: HuddleItem, session: Azdo.SessionInfo): Promise<HuddleListStoredDocument | null> {
     let doc = await requireHuddleListStoredDocument(session);
     if (!doc) {
         console.error("deleteHuddle: failed to get document")
@@ -129,7 +128,7 @@ export async function deleteHuddle(data: HuddleInfo, session: Azdo.SessionInfo):
 interface UpsertHuddleResult {
     item: HuddleStoredDocument,
     list: HuddleListStoredDocument,
-    info: HuddleInfo,
+    info: HuddleItem,
 }
 
 export async function upsertHuddle(data: HuddleStoredDocument, session: Azdo.SessionInfo): Promise<UpsertHuddleResult | null> {
@@ -141,10 +140,9 @@ export async function upsertHuddle(data: HuddleStoredDocument, session: Azdo.Ses
 
     // NOW UPDATE THE LIST
 
-    let nextHuddleInfo: HuddleInfo = {
+    let nextHuddleInfo: HuddleItem = {
         id: data.id,
         name: data.name,
-        isDeleted: false,
     }
 
     let prevHuddles = await requireHuddleListStoredDocument(session);
