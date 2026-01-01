@@ -158,7 +158,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
 export interface HuddlesHomePageProps {
     appNav: AppNav;
     database: Db.Database;
-    sessionInfo: Azdo.SessionInfo;
+    sessionInfo: Azdo.Session;
 }
 
 export default HuddlesHomePage

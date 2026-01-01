@@ -9,6 +9,10 @@ export function uuid(prefix: string): string {
     return tail
 }
 
+export function msecNow(): number { return Date.now(); }
+export function msecToDate(msec: number) { return new Date(msec); }
+export function msecFromISO(iso: string): number { return new Date(iso).getTime(); }
+
 export function spliceWhere<T>(items: T[], predicate: (t: T) => boolean): boolean {
     let idx = items.findIndex((i) => predicate(i))
     if (idx === -1) { return false }

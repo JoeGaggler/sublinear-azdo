@@ -56,7 +56,7 @@ function HomePage(p: HomePageProps) {
 
 export interface HomePageProps {
     appNav: AppNav;
-    sessionInfo: Azdo.SessionInfo;
+    sessionInfo: Azdo.Session;
 }
 
 export default HomePage

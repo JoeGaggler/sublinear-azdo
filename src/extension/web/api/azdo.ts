@@ -67,7 +67,7 @@ export interface QueryWorkItemsWorkItem {
     url?: string
 }
 
-export async function queryWorkItems(session: SessionInfo) {
+export async function queryWorkItems(session: Session) {
     // POST https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?timePrecision={timePrecision}&$top={$top}&api-version=7.2-preview.2
     let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=101&api-version=7.2-preview.2`
 
@@ -109,7 +109,7 @@ export interface WorkItemFields {
     "System.ChangedDate"?: string
 }
 
-export async function getWorkItemRevisions(id: number, session: SessionInfo) {
+export async function getWorkItemRevisions(id: number, session: Session) {
     //GET https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{id}/revisions?$top={$top}&$skip={$skip}&$expand={$expand}&api-version=7.1
     let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}/revisions?$expand=all&api-version=7.1`
     let response = await restGet(url, session.bearerToken) as QueryWorkItemsResult
@@ -121,7 +121,7 @@ export async function getWorkItemRevisions(id: number, session: SessionInfo) {
 // Session
 //
 
-export interface SessionInfo {
+export interface Session {
     isValid: boolean;
     bearerToken: string;
     appToken: string;
@@ -131,7 +131,7 @@ export interface SessionInfo {
     project: string;
 }
 
-export async function refreshSessionInfo(): Promise<SessionInfo | null> {
+export async function refreshSessionInfo(): Promise<Session | null> {
     try {
         let bearerToken = await SDK.getAccessToken();
         let appToken = await SDK.getAppToken();
@@ -172,7 +172,7 @@ export interface ConnectionData {
     }
 }
 
-export async function getConnectionData(session: SessionInfo): Promise<ConnectionData | null> {
+export async function getConnectionData(session: Session): Promise<ConnectionData | null> {
     let data = await restGet(`https://dev.azure.com/${session.organization}/_apis/connectionData?api-version=7.1-preview.1`, session.bearerToken);
     console.log("getConnectionData: ", data);
     return data;
@@ -193,7 +193,7 @@ export interface StoredDocument {
     __etag?: number;
 }
 
-export async function getSharedDocument<T extends StoredDocument>(colId: string, docId: string, session: SessionInfo): Promise<T | null> {
+export async function getSharedDocument<T extends StoredDocument>(colId: string, docId: string, session: Session): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
     const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
@@ -207,7 +207,7 @@ export async function getSharedDocument<T extends StoredDocument>(colId: string,
     }
 }
 
-export async function newSharedDocument<T extends StoredDocument>(colId: string, document: T, session: SessionInfo): Promise<T | null> {
+export async function newSharedDocument<T extends StoredDocument>(colId: string, document: T, session: Session): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
     const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
@@ -221,7 +221,7 @@ export async function newSharedDocument<T extends StoredDocument>(colId: string,
     }
 }
 
-export async function editSharedDocument<T extends StoredDocument>(colId: string, document: T, session: SessionInfo): Promise<T | null> {
+export async function editSharedDocument<T extends StoredDocument>(colId: string, document: T, session: Session): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
     const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
@@ -235,7 +235,7 @@ export async function editSharedDocument<T extends StoredDocument>(colId: string
     }
 }
 
-export async function upsertSharedDocument<T extends StoredDocument>(colId: string, document: T, session: SessionInfo): Promise<T | null> {
+export async function upsertSharedDocument<T extends StoredDocument>(colId: string, document: T, session: Session): Promise<T | null> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
     const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
@@ -249,7 +249,7 @@ export async function upsertSharedDocument<T extends StoredDocument>(colId: stri
     }
 }
 
-export async function deleteSharedDocument(colId: string, docId: string, session: SessionInfo): Promise<boolean> {
+export async function deleteSharedDocument(colId: string, docId: string, session: Session): Promise<boolean> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
     const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
     try {
@@ -263,7 +263,7 @@ export async function deleteSharedDocument(colId: string, docId: string, session
     }
 }
 
-export async function purgeAllDocuments(session: SessionInfo): Promise<void> {
+export async function purgeAllDocuments(session: Session): Promise<void> {
     const extDataService = await SDK.getService<IExtensionDataService>("ms.vss-features.extension-data-service");
     const dataManager = await extDataService.getExtensionDataManager(SDK.getExtensionContext().id, session.bearerToken);
 

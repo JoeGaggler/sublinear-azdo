@@ -21,7 +21,7 @@ function HuddlePage(p: HuddlePageProps) {
         let doc = await Azdo.getSharedDocument<Db.HuddleStoredDocument>(
             Db.huddle_collection_id,
             p.id,
-            p.sessionInfo);
+            p.session);
         if (!doc) {
             console.warn("getHuddle: does not exist")
 
@@ -50,7 +50,7 @@ function HuddlePage(p: HuddlePageProps) {
                 areaPath: data.areaPath
             }
 
-            let upsertResult = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
+            let upsertResult = await Db.upsertHuddle(nextHuddle, p.session)
             if (!upsertResult) {
                 console.warn("onCommitEditHuddle: upsert failed")
                 return
@@ -72,7 +72,39 @@ function HuddlePage(p: HuddlePageProps) {
     }
 
     async function startSession() {
-        
+        if (!huddle) {
+            console.warn("startSession: no huddle")
+            return
+        }
+
+        let huddle2 = await Db.refreshHuddle(huddle, p.session)
+        if (!huddle2) {
+            console.warn("startSession: no huddle2")
+            return
+        }
+        setHuddle(huddle2)
+
+        // TODO: status checks before starting session
+
+        let sessions = await Db.requireHuddleSessionListStoredDocument(huddle, p.session)
+        if (!sessions) {
+            console.warn("startSession: no sessions")
+            return
+        }
+
+        let newSession: Db.HuddleSessionListItem = {
+            id: Util.uuid("session"),
+            created: Util.msecNow(),
+        }
+        sessions.items.push(newSession)
+
+        let savedSessions = Db.upsertHuddleSessionList(sessions, p.session)
+        if (!savedSessions) {
+            console.warn("startSession: upsert failed")
+            return
+        }
+
+        console.log("startSession: sessions", sessions)
     }
 
     function getHeaderCommandBarItems(): IHeaderCommandBarItem[] {
@@ -145,7 +177,7 @@ function HuddlePage(p: HuddlePageProps) {
 export interface HuddlePageProps {
     appNav: AppNav;
     database: Db.Database;
-    sessionInfo: Azdo.SessionInfo;
+    session: Azdo.Session;
     id: string;
 }
 

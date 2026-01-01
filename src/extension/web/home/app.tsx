@@ -13,7 +13,7 @@ function App(p: AppProps) {
     // const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
     const [route, setRoute] = useState<AppRoute>({ view: "loading", data: "" })
     const [database, setDatabase] = useState<db.Database>(db.makeDatabase());
-    const sessionRef = React.useRef<Azdo.SessionInfo>(p.sessionInfo)
+    const sessionRef = React.useRef<Azdo.Session>(p.sessionInfo)
 
     async function navTo(route: AppRoute) {
         console.log("nav: to", route);
@@ -137,7 +137,7 @@ function App(p: AppProps) {
                 <HuddlePage
                     appNav={createAppNav(route)}
                     database={database}
-                    sessionInfo={sessionRef.current}
+                    session={sessionRef.current}
                     id={huddle}
                 />
             )
@@ -178,7 +178,7 @@ export interface AppSingleton {
 }
 
 export interface AppProps {
-    sessionInfo: Azdo.SessionInfo;
+    sessionInfo: Azdo.Session;
     singleton: AppSingleton;
 }
 
