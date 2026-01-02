@@ -13,6 +13,12 @@ export function msecNow(): number { return Date.now(); }
 export function msecToDate(msec: number) { return new Date(msec); }
 export function msecFromISO(iso: string): number { return new Date(iso).getTime(); }
 
+export function forEachReversed<T>(array: T[], iteration: (t: T) => void) {
+    for (let i = array.length - 1; i >= 0; i--) {
+        iteration(array[i])
+    }
+}
+
 export function spliceWhere<T>(items: T[], predicate: (t: T) => boolean): boolean {
     let idx = items.findIndex((i) => predicate(i))
     if (idx === -1) { return false }

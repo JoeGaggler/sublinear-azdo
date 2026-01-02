@@ -86,6 +86,15 @@ export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => 
     }
 }
 
+export async function getHuddleDocument(id: string, session: Azdo.Session): Promise<HuddleStoredDocument | null> {
+    let savedHuddle = await Azdo.getSharedDocument<HuddleStoredDocument>(huddle_collection_id, id, session)
+    if (!savedHuddle) {
+        console.error("getHuddleDocument: upsert huddle failed")
+        return null;
+    }
+    return savedHuddle;
+}
+
 export async function requireHuddleListStoredDocument(session: Azdo.Session): Promise<HuddleListStoredDocument> {
     let doc = await Azdo.getSharedDocument<HuddleListStoredDocument>(
         main_collection_id,

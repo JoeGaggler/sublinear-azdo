@@ -120,6 +120,13 @@ function HuddlePage(p: HuddlePageProps) {
         }
 
         console.log("startSession: sessions", sessionsDoc)
+
+        p.appNav.navTo({
+            view: "huddle_session",
+            data: newSession.id,
+            back: p.appNav.current,
+            title: `huddle_session: ${newSession.id}`
+        });
     }
 
     function getHeaderCommandBarItems(): IHeaderCommandBarItem[] {
@@ -164,6 +171,7 @@ function HuddlePage(p: HuddlePageProps) {
                             (huddleSessions?.items) && (
                                 <HuddleSessionList
                                     list={huddleSessions.items}
+                                    appNav={p.appNav}
                                 />
                             )
                         }

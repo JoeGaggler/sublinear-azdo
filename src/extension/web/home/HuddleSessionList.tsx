@@ -1,7 +1,7 @@
 // import * as Azdo from '../api/azdo.ts';
 // import * as Util from '../api/util.ts';
 import * as Db from '../api/db.ts';
-// import type { AppNav } from './app.tsx';
+import type { AppNav } from './app.tsx';
 // import React from 'react'
 
 import { ScrollableList, ListItem } from "azure-devops-ui/List";
@@ -14,10 +14,16 @@ function HuddleSessionList(p: HuddleSessionListProps) {
 
     async function onSelectSession(item: Db.HuddleSessionListItem) {
         console.log("onSelectSession:", item)
+        p.appNav.navTo({
+            view: "huddle_session",
+            data: item.id,
+            back: p.appNav.current,
+            title: `huddle_session: ${item.id}`
+        });
     }
 
     async function onDeleteSession(item: Db.HuddleSessionListItem) {
-        console.log("onDeleteSession:", item)
+        console.error("TODO: onDeleteSession:", item)
     }
 
     return (
@@ -55,5 +61,6 @@ function HuddleSessionList(p: HuddleSessionListProps) {
 export default HuddleSessionList;
 
 export interface HuddleSessionListProps {
+    appNav: AppNav;
     list: Db.HuddleSessionListItem[]
 }

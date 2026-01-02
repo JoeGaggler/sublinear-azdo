@@ -8,6 +8,7 @@ import HomePage from './HomePage.tsx';
 import HuddlesHomePage from './HuddlesHomePage.tsx';
 import { makeHeaderBackButtonProps } from '../api/util.ts';
 import HuddlePage from './HuddlePage.tsx';
+import HuddleSessionPage from './HuddleSessionPage.tsx';
 
 function App(p: AppProps) {
     // const [sessionInfo, setSessionInfo] = useState<Azdo.SessionInfo>(p.sessionInfo);
@@ -139,6 +140,26 @@ function App(p: AppProps) {
                     database={database}
                     session={sessionRef.current}
                     id={huddle}
+                />
+            )
+        }
+        case "huddle_session": {
+            let huddleSessionId = route.data
+            if (!huddleSessionId) {
+                console.error("Invalid data for huddle session:", route.data)
+                navTo({
+                    view: "error",
+                    data: "Invalid data for huddle session",
+                    back: route.back,
+                });
+                return <></>
+            }
+            return (
+                <HuddleSessionPage
+                    appNav={createAppNav(route)}
+                    database={database}
+                    session={sessionRef.current}
+                    id={huddleSessionId}
                 />
             )
         }
