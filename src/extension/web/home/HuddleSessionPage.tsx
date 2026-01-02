@@ -82,23 +82,62 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         let slides: HuddleSlide[] = []
         for (let wi2 of workItems2) {
-
             // NEW
-            if (workItems1.every(wi1 => wi1.id !== wi2.id)) {
-                slides.push({
-                    type: "new",
-                    id: wi2.id,
-                    title: wi2.title,
-                })
+            let wi1 = workItems1.find(w => w.id !== wi2.id)
+            if (!wi1) {
+                let nextSlide = await createNewSlide(wi2);
+                slides.push(nextSlide)
+                continue;
             }
 
-            // TODO: exists in both (has changes or not)
+            // MATCHED
+            let nextSlide = await createFoundSlide(wi1, wi2);
+            slides.push(nextSlide)
+        }
+
+        // TODO: slides only in previous
+        for (let wi1 of workItems1) {
+            let wi2 = workItems2.find(w => w.id !== wi1.id);
+            if (wi2) {
+                // already handled above
+                continue;
+            }
+
+            // OLD
+            let nextSlide = await createFinalSlide(wi1);
+            slides.push(nextSlide)
         }
 
         console.log("debug", snapShot2.workitems?.items)
         setGraph({
             debugWorkItems: workItems1,
             slides: slides,
+        })
+    }
+
+    async function createNewSlide(wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
+        return ({
+            type: "new",
+            id: wi2.id,
+            title: wi2.title,
+        })
+    }
+
+    async function createFoundSlide(_wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
+        // TODO: has changes or not)
+        return ({
+            type: "same",
+            id: wi2.id,
+            title: wi2.title,
+        })
+    }
+
+    async function createFinalSlide(wi1: Db.WorkItemSnapshot): Promise<HuddleSlide> {
+        // TODO: has changes or not)
+        return ({
+            type: "final",
+            id: wi1.id,
+            title: wi1.title,
         })
     }
 
