@@ -89,6 +89,7 @@ export interface WorkItemsSnapshot {
 export interface WorkItemSnapshot {
     id: number
     title: string
+    priority: number
 }
 
 export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => boolean, removing: (t: T) => void, create: (from: S) => T): void {

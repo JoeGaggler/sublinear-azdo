@@ -10,7 +10,19 @@ import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 // import { Button } from "azure-devops-ui/Button";
 
+interface HuddleGraph {
+    debugWorkItems: Db.WorkItemSnapshot[]
+    slides: HuddleSlide[]
+}
+
+interface HuddleSlide {
+    id: number
+    title: string
+}
+
 function HuddleSessionPage(p: HuddleSessionPageProps) {
+    let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
+
     React.useEffect(() => {
         const interval_id = setInterval(() => { poll(); }, 1000);
         return () => { clearInterval(interval_id); };
@@ -63,6 +75,20 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         // TODO: PERSIST ALL CHANGES TO HUDDLE SESSION
         console.log("Snapshot1:", snapShot1)
         console.log("Snapshot2:", snapShot2)
+
+        let slides: HuddleSlide[] = []
+        for (let wi of snapShot2.workitems?.items || []) {
+            slides.push({
+                id: wi.id,
+                title: wi.title,
+            })
+        }
+
+        console.log("debug", snapShot2.workitems?.items)
+        setGraph({
+            debugWorkItems: snapShot2.workitems?.items || [],
+            slides: slides,
+        })
     }
 
     async function getSnapshot(query: Db.HuddleWorkItemQuery, session: Azdo.Session): Promise<Db.HuddleSessionSnapshot> {
@@ -83,11 +109,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         for (const wi of workItemsResult.workItems) {
             let wid = wi.id
             if (!wid) { continue; } // TODO: error
-            let wi2 = await Azdo.getWorkItem(wid, "System.Title", p.session)
+            let fields = "System.Title,Microsoft.VSTS.Common.Priority"
+            let wi2 = await Azdo.getWorkItem(wid, fields, p.session)
             console.log("getSnapshot: work item", wid, wi2)
             items.push({
                 id: wid,
-                title: wi2.fields?.['System.Title'] || ""
+                title: wi2.fields?.['System.Title'] || "",
+                priority: wi2.fields?.['Microsoft.VSTS.Common.Priority'] || Number.MAX_SAFE_INTEGER,
             })
         }
 
@@ -103,6 +131,41 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         console.log("HuddleSessionPage poll");
     }
 
+    function debugSnapshotCard() {
+        if (!graph?.debugWorkItems) { return <></> }
+        console.log("debug2", graph?.debugWorkItems)
+        return (
+            <Card>
+                <div className="flex-column">
+                    {
+                        graph.debugWorkItems.map(s => {
+                            return (
+                                <Header
+                                    title={`${s.id} - ${s.title} - ${s.priority}`}
+                                    titleSize={TitleSize.Small}
+                                />)
+                        })
+                    }
+                </div>
+            </Card>
+        )
+    }
+
+    function debugSlides() {
+        let slides = graph?.slides;
+        if (!slides) { return <></> }
+        return slides.map(s => {
+            return (
+                <Card>
+                    <Header
+                        title={`Slide ${s.id} - ${s.title}`}
+                        titleSize={TitleSize.Small}
+                    />
+                </Card>
+            )
+        })
+    }
+
     return (
         <Page>
             <Header
@@ -116,6 +179,10 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                         TODO: Huddle Session
                     </div>
                 </Card>
+                <hr />
+                {debugSlides()}
+                <hr />
+                {debugSnapshotCard()}
             </div>
         </Page>
     )

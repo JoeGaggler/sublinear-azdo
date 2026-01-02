@@ -84,6 +84,7 @@ export interface WorkItemFields {
     "System.Rev"?: number
     "System.State"?: string
     "System.Title"?: string
+    "Microsoft.VSTS.Common.Priority"?: number
 }
 
 export interface GetWorkItemResult {
