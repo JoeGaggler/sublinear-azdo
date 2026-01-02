@@ -244,7 +244,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return (
             <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details}>
                 <div className="list-example-row flex-row h-scroll-hidden">
-                    <Icon iconName={"Home"} size={IconSize.medium} />
+                    <Icon iconName={"QuickNoteSolid"} size={IconSize.medium} />
                     <div
                         style={{ marginLeft: "10px", padding: "10px 0px" }}
                         className="flex-column h-scroll-hidden"
