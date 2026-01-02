@@ -91,6 +91,19 @@ export interface WorkItemSnapshot {
     id: number
     title: string
     priority: number
+
+    state?: string
+    areaPath?: string
+    iterationPath?: string
+    description?: string
+    parent?: number
+
+    // TODO
+    comments?: WorkItemSnapshotComment[]
+}
+
+export interface WorkItemSnapshotComment {
+    content: string
 }
 
 export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => boolean, removing: (t: T) => void, create: (from: S) => T): void {
@@ -305,9 +318,8 @@ export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: num
     let asOfString = (asOf) ? `ASOF '${Util.msecToISO(asOf)}'` : ""
     let orderString = "ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.CreatedDate] DESC"
     let whereString = `WHERE [System.TeamProject] = '${session.projectName}'`
-    
 
-    if (query.areaPath) { whereString += ` AND [System.AreaPath] = '${query.areaPath}'`}
+    if (query.areaPath) { whereString += ` AND [System.AreaPath] = '${query.areaPath}'` }
 
     // let wiqlQuery = `${selectString}  ${whereString}  ${orderString}  ${asOfString}`
     let wiqlDebug = `${selectString}\n${whereString}\n${orderString}\n${asOfString}`

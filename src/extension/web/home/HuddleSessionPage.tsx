@@ -155,9 +155,57 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         })
     }
 
+    function getParentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+        let s1: string = ""
+        let s2: string = ""
+
+        if (wi1.parent) {
+            s1 = `#${wi1.parent}`
+        } else {
+            s1 = "(not set)"
+        }
+
+        if (wi2.parent) {
+            s2 = `#${wi2.parent}`
+
+        } else {
+            s2 = "(not set)"
+        }
+
+        return { what: "System.Parent", prev: s1, next: s2 }
+    }
+
+    function getCommentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+        let s1: string = ""
+        let s2: string = ""
+
+        if (wi1.comments && (wi1.comments?.length || 0) > 0) {
+            s1 = `${wi1.comments?.length}`
+        } else {
+            s1 = "0"
+        }
+
+        if (wi2.comments && (wi2.comments?.length || 0) > 0) {
+            s2 = `${wi2.comments?.length}`
+
+        } else {
+            s2 = "0"
+        }
+
+        return { what: "System.CommentCount", prev: s1, next: s2 }
+    }
+
+
     async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
         let fieldChanges: HuddleSlideFieldChange[] = []
         if (wi1.title !== wi2.title) { fieldChanges.push({ what: "System.Title", prev: wi1.title, next: wi2.title }) }
+        if (wi1.state !== wi2.state) { fieldChanges.push({ what: "System.State", prev: wi1.state || "", next: wi2.state || "" }) }
+        if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push({ what: "System.AreaPath", prev: wi1.areaPath || "", next: wi2.areaPath || "" }) }
+        if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push({ what: "System.IterationPath", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" }) }
+        if (wi1.description !== wi2.description) { fieldChanges.push({ what: "System.Description", prev: wi1.description || "", next: wi2.description || "" }) }
+        if (wi1.parent !== wi2.parent) { { fieldChanges.push(getParentFieldChange(wi1, wi2)) } }
+        if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { { fieldChanges.push(getCommentFieldChange(wi1, wi2)) } }
+
         // hasChanges = hasChanges || (wi1.priority !== wi2.priority) // TODO: priority should be based on position of snapshot in huddle session, not the raw value
 
         if (fieldChanges.length > 0) {
@@ -206,10 +254,24 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             if (!wid) { continue; } // TODO: error
             let wi2 = await Azdo.getWorkItem(wid, null, asOf, p.session)
             console.log("getSnapshot: work item", wid, wi2)
+
+            let commentCount = wi2.fields?.['System.CommentCount'] ?? 0;
+            if (commentCount > 0) {
+                // TODO: fetch full comment details
+                let wicomments = await Azdo.getWorkItemComments(wid, p.session)
+                commentCount = wicomments?.count || commentCount
+            }
+
             items.push({
                 id: wid,
                 title: wi2.fields?.['System.Title'] || "",
                 priority: wi2.fields?.['Microsoft.VSTS.Common.Priority'] || Number.MAX_SAFE_INTEGER,
+                state: wi2.fields?.['System.State'],
+                areaPath: wi2.fields?.['System.AreaPath'],
+                iterationPath: wi2.fields?.['System.IterationPath'],
+                comments: Array.from({ length: commentCount }, (_v, k): Db.WorkItemSnapshotComment => { return { content: `TODO: Comment ${k}` } }),
+                parent: wi2.fields?.['System.Parent'],
+                description: wi2.fields?.['System.Description']
             })
         }
 
@@ -280,7 +342,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function renderPillForFieldChange(fc: HuddleSlideFieldChange) {
         let what: string = (() => {
             switch (fc.what) {
+                case "System.State": return "State"
                 case "System.Title": return "Title"
+                case "System.Description": return "Description"
+                case "System.AreaPath": return "Area"
+                case "System.IterationPath": return "Iteration"
+                case "System.CommentCount": return "Comments"
+                case "System.Parent": return "Parent"
                 default: return fc.what
             }
         })();

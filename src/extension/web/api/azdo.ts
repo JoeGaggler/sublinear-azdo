@@ -86,6 +86,11 @@ export interface WorkItemFields {
     "System.Rev"?: number
     "System.State"?: string
     "System.Title"?: string
+    "System.CommentCount"?: number
+    "System.AreaPath"?: string
+    "System.Parent"?: number
+    "System.Description"?: string
+    "System.IterationPath"?: string
     "Microsoft.VSTS.Common.Priority"?: number
 }
 
@@ -97,10 +102,31 @@ export async function getWorkItem(id: number, fields: string | null, asOf: numbe
     let fieldsQueryParam = fields ? `&$fields=${fields}` : ""
     let asOfQueryParam = asOf ? `&asOf=${Util.msecToISO(asOf)}` : ""
     // GET https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{id}?fields={fields}&asOf={asOf}&$expand={$expand}&api-version=7.1
-    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}?api-version=7.1${fieldsQueryParam}${asOfQueryParam}`
-    let response = await restGet(url, session.bearerToken) as QueryWorkItemsResult
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}?api-version=7.1&$expand=all${fieldsQueryParam}${asOfQueryParam}`
+    let response = await restGet(url, session.bearerToken) as GetWorkItemResult
     console.log("queryWorkItems:", response)
     return response as GetWorkItemResult
+}
+
+export interface GetWorkItemCommentsResult {
+    count: number
+    comments: GetWorkItemCommentsResultItem[]
+}
+
+export interface GetWorkItemCommentsResultItem {
+    commentId?: number
+    text?: string
+    workItemId?: number
+    version?: number
+}
+
+
+export async function getWorkItemComments(id: number, session: Session): Promise<GetWorkItemCommentsResult> {
+    // GET https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{id}/comments?$top={$top}&continuationToken={continuationToken}&includeDeleted={includeDeleted}&$expand={$expand}&order={order}&api-version=7.1-preview.4
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}/comments?api-version=7.1-preview.4&$expand=all&order=desc&$top=10` // TODO: increase top 10?
+    let response = await restGet(url, session.bearerToken) as GetWorkItemCommentsResult
+    console.log("queryWorkItems:", response)
+    return response as GetWorkItemCommentsResult
 }
 
 export async function getWorkItemRevisions(id: number, session: Session) {
