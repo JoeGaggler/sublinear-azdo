@@ -243,8 +243,38 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     function renderPillGroup(item: HuddleSlide) {
         return <PillGroup className="flex-row" overflow={PillGroupOverflow.wrap}>
+            {renderPillForSlideType(item)}
             {(item.fieldChanges) && (item.fieldChanges.map(fc => renderPillForFieldChange(fc)))}
         </PillGroup>
+    }
+
+    function renderPillForSlideType(item: HuddleSlide) {
+        let what: { iconName: string, text: string } | undefined = (() => {
+            switch (item.type) {
+                case "new": return { iconName: "AddTo", text: "New" }
+                case "final": return { iconName: "Blocked2", text: "Removed" }
+                case "update": return undefined; // shown via field changes
+                case "same": return undefined; // nothing interesting
+                default: return undefined
+            }
+        })();
+
+        if (!what) { return <></> }
+        return <Pill variant={PillVariant.themedStandard} iconProps={{ iconName: what.iconName }} >{what.text}</Pill>
+    }
+
+    function renderIconForSlideType(item: HuddleSlide) {
+        let what: { iconName: string } = (() => {
+            switch (item.type) {
+                case "new": return { iconName: "AddTo" }
+                case "final": return { iconName: "Blocked2" }
+                case "update": return { iconName: "Edit" }
+                case "same": return { iconName: "CircleRing" }
+                default: return { iconName: "QuickNoteSolid" }
+            }
+        })();
+
+        return <Icon iconName={what.iconName} size={IconSize.medium} />
     }
 
     function renderPillForFieldChange(fc: HuddleSlideFieldChange) {
@@ -261,12 +291,12 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function renderSlideListItem(rowIndex: number, item: HuddleSlide, details: IListItemDetails<HuddleSlide>, key?: string) {
         return (
             <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details}>
-                <div className="list-example-row flex-row h-scroll-hidden">
-                    <Icon iconName={"QuickNoteSolid"} size={IconSize.medium} />
-                    <div style={{ marginLeft: "10px", padding: "10px 0px" }} className="flex-column h-scroll-hidden">
-                        <div className="flex-row rhythm-horizontal-4">
-                            <div className="wrap-text">{item.id}</div>
-                            <div className="fontSizeMS font-size-ms secondary-text wrap-text">{item.title}</div>
+                <div className="list-example-row flex-row h-scroll-hidden padding-8 rhythm-horizontal-8">
+                    {renderIconForSlideType(item)}
+                    <div className="flex-column h-scroll-hidden rhythm-vertical-4">
+                        <div className="flex-row rhythm-horizontal-8">
+                            <div className="wrap-text font-size-ms font-weight-semibold">{item.id}</div>
+                            <div className="wrap-text font-size-ms secondary-text">{item.title}</div>
                         </div>
                         {renderPillGroup(item)}
                     </div>
