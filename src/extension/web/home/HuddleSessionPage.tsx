@@ -62,15 +62,17 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             huddleSession.snapshot = snapShot2
         }
 
-        // TODO: previous work items
         let snapShot1: Db.HuddleSessionSnapshot;
         if (p.previousHuddleSessionId) {
-            // TODO: fetch previous huddle session
-            // TODO: fetch snapshot
-            snapShot1 = {
-                workitems: {
-                    items: []
+            let previousHuddleSession = await Db.requireHuddleSessionStoredDocument(p.previousHuddleSessionId, p.session)
+            if (!previousHuddleSession.snapshot) {
+                snapShot1 = {
+                    workitems: {
+                        items: []
+                    }
                 }
+            } else {
+                snapShot1 = previousHuddleSession.snapshot
             }
         } else {
             snapShot1 = {
