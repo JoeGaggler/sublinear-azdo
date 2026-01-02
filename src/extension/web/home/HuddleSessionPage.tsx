@@ -16,6 +16,7 @@ interface HuddleGraph {
 }
 
 interface HuddleSlide {
+    type: string
     id: number
     title: string
 }
@@ -76,17 +77,27 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         console.log("Snapshot1:", snapShot1)
         console.log("Snapshot2:", snapShot2)
 
+        let workItems1 = snapShot1.workitems?.items || []
+        let workItems2 = snapShot2.workitems?.items || []
+
         let slides: HuddleSlide[] = []
-        for (let wi of snapShot2.workitems?.items || []) {
-            slides.push({
-                id: wi.id,
-                title: wi.title,
-            })
+        for (let wi2 of workItems2) {
+
+            // NEW
+            if (workItems1.every(wi1 => wi1.id !== wi2.id)) {
+                slides.push({
+                    type: "new",
+                    id: wi2.id,
+                    title: wi2.title,
+                })
+            }
+
+            // TODO: exists in both (has changes or not)
         }
 
         console.log("debug", snapShot2.workitems?.items)
         setGraph({
-            debugWorkItems: snapShot2.workitems?.items || [],
+            debugWorkItems: workItems1,
             slides: slides,
         })
     }
@@ -154,11 +165,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function debugSlides() {
         let slides = graph?.slides;
         if (!slides) { return <></> }
-        return slides.map(s => {
+        return slides.map((s, i) => {
             return (
                 <Card>
                     <Header
-                        title={`Slide ${s.id} - ${s.title}`}
+                        title={`${s.type} Slide #${i}  ${s.id} - ${s.title}`}
                         titleSize={TitleSize.Small}
                     />
                 </Card>
