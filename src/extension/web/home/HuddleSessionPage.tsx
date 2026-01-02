@@ -29,6 +29,8 @@ interface HuddleSlideFieldChange {
 }
 
 function HuddleSessionPage(p: HuddleSessionPageProps) {
+    // let [huddleDoc, setHuddleDoc] = React.useState<Db.HuddleStoredDocument | null>(null)
+    let [title, setTitle] = React.useState<string>("")
     let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
 
     React.useEffect(() => {
@@ -44,6 +46,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             console.error("HuddleSessionPage: missing huddle");
             return
         }
+        setTitle(`${huddle?.name || ""} Session`)
         console.log("HuddleSessionPage: huddle", huddle);
 
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
@@ -194,7 +197,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         for (const wi of workItemsResult.workItems) {
             let wid = wi.id
             if (!wid) { continue; } // TODO: error
-            let wi2 = await Azdo.getWorkItem(wid, null, p.session)
+            let wi2 = await Azdo.getWorkItem(wid, null, asOf, p.session)
             console.log("getSnapshot: work item", wid, wi2)
             items.push({
                 id: wid,
@@ -218,58 +221,45 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function debugSlides() {
         let slides = graph?.slides;
         if (!slides) { return <></> }
-        return slides.map((s, i) => {
-            return (
-                <Card>
-                    <div className="flex-column">
-                        <Header
-                            title={`${s.type} Slide #${i}  ${s.id} - ${s.title}`}
-                            titleSize={TitleSize.Small}
-                        />
-                        {
-                            (s.fieldChanges) && (
-                                s.fieldChanges.map(fc => {
-                                    return (
-                                        <div>
-                                            {fc.what} - {fc.prev} - {fc.next}
-                                        </div>
-                                    )
-                                })
-                            )
-                        }
-                    </div>
-                </Card>
-            )
-        })
+        return (
+            <div className="flex-column rhythm-vertical-8">
+                {
+                    slides.map((s, i) => {
+                        return (
+                            <Card>
+                                <div className="flex-column rhythm-vertical-4">
+                                    <Header
+                                        title={`${s.type} Slide #${i}  ${s.id} - ${s.title}`}
+                                        titleSize={TitleSize.Small}
+                                    />
+                                    {
+                                        (s.fieldChanges) && (
+                                            s.fieldChanges.map(fc => {
+                                                return (
+                                                    <div>
+                                                        {fc.what} - {fc.prev} - {fc.next}
+                                                    </div>
+                                                )
+                                            })
+                                        )
+                                    }
+                                </div>
+                            </Card>
+                        )
+                    })
+                }
+            </div>
+        )
     }
 
     return (
         <Page>
             <Header
-                title={"TODO: Huddle Session"}
+                title={title}
                 titleSize={TitleSize.Large}
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
             />
             <div className="page-content page-content-top">
-                <Card>
-                    <div className="flex-column">
-                        <Header
-                            title={`Session: ${p.huddleSessionId} - CREATED?`}
-                            titleSize={TitleSize.Medium}
-                        />
-                        {
-                            (p.previousHuddleSessionId &&
-                                (
-                                    <Header
-                                        title={`Previous: ${p.previousHuddleSessionId} - CREATED?`}
-                                        titleSize={TitleSize.Medium}
-                                    />
-                                )
-                            )
-                        }
-                    </div>
-                </Card>
-                <hr />
                 {debugSlides()}
             </div>
         </Page>

@@ -122,6 +122,8 @@ function HuddlePage(p: HuddlePageProps) {
         console.log("startSession: sessions", sessionsDoc)
 
         onSelectHuddleSession(newSession)
+        let previousId = getPriorHuddleSessionItem(savedSessions, newSession.id)
+        onOpenHuddleSession(huddle.id, newSession.id, previousId)
     }
 
     function getHeaderCommandBarItems(): IHeaderCommandBarItem[] {
@@ -151,6 +153,30 @@ function HuddlePage(p: HuddlePageProps) {
         return items
     }
 
+    function getPriorHuddleSessionItem(list: Db.HuddleSessionListStoredDocument, id: string): string | undefined {
+        let index1 = list.items.findIndex(s => s.id === id)
+        if (index1 == -1) {
+            console.warn("getPriorHuddleSessionItem: no huddle in sessions list")
+            return
+        }
+
+        let previousId: string | undefined = undefined;
+        let index2 = index1 + 1
+        console.log("getPriorHuddleSessionItem: 1/2/len", index1, index2, list.items.length)
+        if (index2 >= list.items.length) {
+            console.warn("getPriorHuddleSessionItem: no second huddle")
+        } else {
+            let oldSession = list.items[index2];
+            if (!oldSession) {
+                console.warn("getPriorHuddleSessionItem: no old huddle", list.items)
+                return
+            }
+            previousId = oldSession.id;
+        }
+
+        return previousId
+    }
+
     async function onSelectHuddleSession(newSession: Db.HuddleSessionListItem) {
         if (!huddle) {
             console.warn("onSelectHuddleSession: no huddle")
@@ -164,26 +190,7 @@ function HuddlePage(p: HuddlePageProps) {
         }
         setHuddleSessions(huddleSessions)
 
-        let index1 = huddleSessions.items.findIndex(s => s.id === newSession.id)
-        if (index1 == -1) {
-            console.warn("onSelectHuddleSession: no huddle in sessions list")
-            return
-        }
-
-        let previousId: string | undefined = undefined;
-        let index2 = index1 + 1
-        console.log("onSelectHuddleSession: 1/2/len", index1, index2, huddleSessions.items.length)
-        if (index2 >= huddleSessions.items.length) {
-            console.warn("onSelectHuddleSession: no second huddle")
-        } else {
-            let oldSession = huddleSessions.items[index2];
-            if (!oldSession) {
-                console.warn("onSelectHuddleSession: no old huddle", huddleSessions.items)
-                return
-            }
-            previousId = oldSession.id;
-        }
-
+        let previousId = getPriorHuddleSessionItem(huddleSessions, newSession.id)
         await onOpenHuddleSession(huddle.id, newSession.id, previousId)
     }
 

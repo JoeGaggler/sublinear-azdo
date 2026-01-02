@@ -1,5 +1,7 @@
 
 import * as SDK from 'azure-devops-extension-sdk';
+import * as Util from '../api/util.ts';
+
 import {
     type IExtensionDataService,
     type IHostNavigationService,
@@ -91,10 +93,11 @@ export interface GetWorkItemResult {
     fields?: WorkItemFields
 }
 
-export async function getWorkItem(id: number, fields: string | null, session: Session): Promise<GetWorkItemResult> {
+export async function getWorkItem(id: number, fields: string | null, asOf: number | null, session: Session): Promise<GetWorkItemResult> {
     let fieldsQueryParam = fields ? `&$fields=${fields}` : ""
+    let asOfQueryParam = asOf ? `&asOf=${Util.msecToISO(asOf)}` : ""
     // GET https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{id}?fields={fields}&asOf={asOf}&$expand={$expand}&api-version=7.1
-    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}?api-version=7.1${fieldsQueryParam}`
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}?api-version=7.1${fieldsQueryParam}${asOfQueryParam}`
     let response = await restGet(url, session.bearerToken) as QueryWorkItemsResult
     console.log("queryWorkItems:", response)
     return response as GetWorkItemResult
