@@ -10,10 +10,12 @@ import { Card } from 'azure-devops-ui/Card';
 import React from 'react'
 import { EditHuddlePanel, type EditHuddlePanelValues } from './EditHuddlePanel.tsx';
 import type { IHeaderCommandBarItem } from 'azure-devops-ui/HeaderCommandBar';
+import HuddleSessionList from './HuddleSessionList.tsx';
 
 
 function HuddlePage(p: HuddlePageProps) {
     const [huddle, setHuddle] = React.useState<Db.HuddleStoredDocument | null>(null)
+    const [huddleSessions, setHuddleSessions] = React.useState<Db.HuddleSessionListStoredDocument | null>(null)
     const [isEditingHuddle, setIsEditingHuddle] = React.useState<boolean>(false);
 
     React.useEffect(() => { init(); return; }, []);
@@ -22,12 +24,23 @@ function HuddlePage(p: HuddlePageProps) {
             Db.huddle_collection_id,
             p.id,
             p.session);
-        if (!doc) {
-            console.warn("getHuddle: does not exist")
 
+        if (!doc) {
             // TODO: nav back?
+            console.warn("getHuddle: does not exist")
             doc = null
+        } else {
+            setHuddle(doc);
+
+            let sessionsDoc = await Db.requireHuddleSessionListStoredDocument(doc, p.session)
+            if (!sessionsDoc) {
+                console.warn("startSession: no sessions")
+                return
+            } else {
+                setHuddleSessions(sessionsDoc)
+            }
         }
+
         setHuddle(doc);
     }
 
@@ -86,8 +99,8 @@ function HuddlePage(p: HuddlePageProps) {
 
         // TODO: status checks before starting session
 
-        let sessions = await Db.requireHuddleSessionListStoredDocument(huddle, p.session)
-        if (!sessions) {
+        let sessionsDoc = await Db.requireHuddleSessionListStoredDocument(huddle, p.session)
+        if (!sessionsDoc) {
             console.warn("startSession: no sessions")
             return
         }
@@ -96,15 +109,17 @@ function HuddlePage(p: HuddlePageProps) {
             id: Util.uuid("session"),
             created: Util.msecNow(),
         }
-        sessions.items.push(newSession)
+        sessionsDoc.items.unshift(newSession) // HACK: new sessions at the top
 
-        let savedSessions = Db.upsertHuddleSessionList(sessions, p.session)
+        let savedSessions = await Db.upsertHuddleSessionList(sessionsDoc, p.session)
         if (!savedSessions) {
             console.warn("startSession: upsert failed")
             return
+        } else {
+            setHuddleSessions(savedSessions)
         }
 
-        console.log("startSession: sessions", sessions)
+        console.log("startSession: sessions", sessionsDoc)
     }
 
     function getHeaderCommandBarItems(): IHeaderCommandBarItem[] {
@@ -145,9 +160,13 @@ function HuddlePage(p: HuddlePageProps) {
                 />
                 <div className="page-content page-content-top">
                     <Card>
-                        <div className="flex-column">
-                            {huddle.id}
-                        </div>
+                        {
+                            (huddleSessions?.items) && (
+                                <HuddleSessionList
+                                    list={huddleSessions.items}
+                                />
+                            )
+                        }
                     </Card>
                 </div>
                 {
