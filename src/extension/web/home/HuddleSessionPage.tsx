@@ -9,6 +9,7 @@ import { Card } from "azure-devops-ui/Card";
 import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 // import { Button } from "azure-devops-ui/Button";
+import { SplitterElementPosition, Splitter, SplitterDirection } from "azure-devops-ui/Splitter";
 
 interface HuddleGraph {
     debugWorkItems: Db.WorkItemSnapshot[]
@@ -218,7 +219,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         console.log("HuddleSessionPage poll");
     }
 
-    function debugSlides() {
+    function renderSlideList() {
         let slides = graph?.slides;
         if (!slides) { return <></> }
         return (
@@ -252,6 +253,19 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         )
     }
 
+    function renderSlideContent() {
+        return (
+            <div style={{ padding: "16px" }}>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+                exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
+                irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+                pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia
+                deserunt mollit anim id est laborum.
+            </div>
+        );
+    }
+
     return (
         <Page>
             <Header
@@ -260,7 +274,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
             />
             <div className="page-content page-content-top">
-                {debugSlides()}
+                <Splitter
+                    fixedElement={SplitterElementPosition.Near}
+                    splitterDirection={SplitterDirection.Vertical}
+                    initialFixedSize={300}
+                    minFixedSize={200}
+                    nearElementClassName="v-scroll-auto custom-scrollbar"
+                    farElementClassName="v-scroll-auto custom-scrollbar"
+                    onRenderNearElement={renderSlideList}
+                    onRenderFarElement={renderSlideContent}
+                />
             </div>
         </Page>
     )
