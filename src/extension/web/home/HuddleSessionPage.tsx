@@ -10,11 +10,12 @@ import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 // import { Button } from "azure-devops-ui/Button";
 import { SingleLayerMasterPanel } from "azure-devops-ui/MasterDetails";
-import { SingleLayerMasterPanelHeader } from "azure-devops-ui/Components/SingleLayerMasterPanel/SingleLayerMasterPanel";
+// import { SingleLayerMasterPanelHeader } from "azure-devops-ui/Components/SingleLayerMasterPanel/SingleLayerMasterPanel";
 import { ScrollableList, ListSelection, ListItem, type IListItemDetails } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { Icon, IconSize } from 'azure-devops-ui/Icon';
-
+import { Pill, PillVariant } from "azure-devops-ui/Pill";
+import { PillGroup, PillGroupOverflow } from "azure-devops-ui/PillGroup";
 
 interface HuddleGraph {
     debugWorkItems: Db.WorkItemSnapshot[]
@@ -156,7 +157,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
         let fieldChanges: HuddleSlideFieldChange[] = []
-        if (wi1.title !== wi2.title) { fieldChanges.push({ what: "title", prev: wi1.title, next: wi2.title }) }
+        if (wi1.title !== wi2.title) { fieldChanges.push({ what: "System.Title", prev: wi1.title, next: wi2.title }) }
         // hasChanges = hasChanges || (wi1.priority !== wi2.priority) // TODO: priority should be based on position of snapshot in huddle session, not the raw value
 
         if (fieldChanges.length > 0) {
@@ -240,30 +241,34 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         )
     }
 
+    function renderPillGroup(item: HuddleSlide) {
+        return <PillGroup className="flex-row" overflow={PillGroupOverflow.wrap}>
+            {(item.fieldChanges) && (item.fieldChanges.map(fc => renderPillForFieldChange(fc)))}
+        </PillGroup>
+    }
+
+    function renderPillForFieldChange(fc: HuddleSlideFieldChange) {
+        let what: string = (() => {
+            switch (fc.what) {
+                case "System.Title": return "Title"
+                default: return fc.what
+            }
+        })();
+
+        return <Pill variant={PillVariant.themedStandard} iconProps={{ iconName: "Edit" }} >{what}</Pill>
+    }
+
     function renderSlideListItem(rowIndex: number, item: HuddleSlide, details: IListItemDetails<HuddleSlide>, key?: string) {
         return (
             <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details}>
                 <div className="list-example-row flex-row h-scroll-hidden">
                     <Icon iconName={"QuickNoteSolid"} size={IconSize.medium} />
-                    <div
-                        style={{ marginLeft: "10px", padding: "10px 0px" }}
-                        className="flex-column h-scroll-hidden"
-                    >
-                        <span className="wrap-text">{item.id}</span>
-                        <span className="fontSizeMS font-size-ms secondary-text wrap-text">
-                            {item.title}
-                        </span>
-                        {
-                            (item.fieldChanges) && (
-                                item.fieldChanges.map(fc => {
-                                    return (
-                                        <div>
-                                            {fc.what} - {fc.prev} - {fc.next}
-                                        </div>
-                                    )
-                                })
-                            )
-                        }
+                    <div style={{ marginLeft: "10px", padding: "10px 0px" }} className="flex-column h-scroll-hidden">
+                        <div className="flex-row rhythm-horizontal-4">
+                            <div className="wrap-text">{item.id}</div>
+                            <div className="fontSizeMS font-size-ms secondary-text wrap-text">{item.title}</div>
+                        </div>
+                        {renderPillGroup(item)}
                     </div>
                 </div>
             </ListItem>
@@ -283,9 +288,9 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         );
     }
 
-    function renderHeader() {
-        return <SingleLayerMasterPanelHeader title={"Slides"} />
-    }
+    // function renderHeader() {
+    //     return <SingleLayerMasterPanelHeader title={"Slides"} />
+    // }
 
     function renderContent(_selection: any, _itemProvider: any) {
         return (renderSlideList())
@@ -308,7 +313,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 <div className="flex-row">
                     <SingleLayerMasterPanel
                         className="master-example-panel show-on-small-screens"
-                        renderHeader={renderHeader}
+                        // renderHeader={renderHeader}
                         renderContent={() => renderContent(selection, itemProvider)}
                     />
                     {renderSlideContent()}
