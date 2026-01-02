@@ -5,11 +5,16 @@ import type { AppNav } from './app.tsx';
 
 import React from 'react'
 
-import { Card } from "azure-devops-ui/Card";
+// import { Card } from "azure-devops-ui/Card";
 import { Page } from "azure-devops-ui/Page";
 import { Header, TitleSize } from "azure-devops-ui/Header";
 // import { Button } from "azure-devops-ui/Button";
-import { SplitterElementPosition, Splitter, SplitterDirection } from "azure-devops-ui/Splitter";
+import { SingleLayerMasterPanel } from "azure-devops-ui/MasterDetails";
+import { SingleLayerMasterPanelHeader } from "azure-devops-ui/Components/SingleLayerMasterPanel/SingleLayerMasterPanel";
+import { ScrollableList, ListSelection, ListItem, type IListItemDetails } from "azure-devops-ui/List";
+import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
+import { Icon, IconSize } from 'azure-devops-ui/Icon';
+
 
 interface HuddleGraph {
     debugWorkItems: Db.WorkItemSnapshot[]
@@ -222,34 +227,46 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function renderSlideList() {
         let slides = graph?.slides;
         if (!slides) { return <></> }
+
+        let tasks = new ArrayItemProvider(slides)
+        let selection = new ListSelection(true)
         return (
-            <div className="flex-column rhythm-vertical-8">
-                {
-                    slides.map((s, i) => {
-                        return (
-                            <Card>
-                                <div className="flex-column rhythm-vertical-4">
-                                    <Header
-                                        title={`${s.type} Slide #${i}  ${s.id} - ${s.title}`}
-                                        titleSize={TitleSize.Small}
-                                    />
-                                    {
-                                        (s.fieldChanges) && (
-                                            s.fieldChanges.map(fc => {
-                                                return (
-                                                    <div>
-                                                        {fc.what} - {fc.prev} - {fc.next}
-                                                    </div>
-                                                )
-                                            })
-                                        )
-                                    }
-                                </div>
-                            </Card>
-                        )
-                    })
-                }
-            </div>
+            <ScrollableList
+                itemProvider={tasks}
+                renderRow={renderSlideListItem}
+                selection={selection}
+                width="100%"
+            />
+        )
+    }
+
+    function renderSlideListItem(rowIndex: number, item: HuddleSlide, details: IListItemDetails<HuddleSlide>, key?: string) {
+        return (
+            <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details}>
+                <div className="list-example-row flex-row h-scroll-hidden">
+                    <Icon iconName={"Home"} size={IconSize.medium} />
+                    <div
+                        style={{ marginLeft: "10px", padding: "10px 0px" }}
+                        className="flex-column h-scroll-hidden"
+                    >
+                        <span className="wrap-text">{item.id}</span>
+                        <span className="fontSizeMS font-size-ms secondary-text wrap-text">
+                            {item.title}
+                        </span>
+                        {
+                            (item.fieldChanges) && (
+                                item.fieldChanges.map(fc => {
+                                    return (
+                                        <div>
+                                            {fc.what} - {fc.prev} - {fc.next}
+                                        </div>
+                                    )
+                                })
+                            )
+                        }
+                    </div>
+                </div>
+            </ListItem>
         )
     }
 
@@ -266,6 +283,20 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         );
     }
 
+    function renderHeader() {
+        return <SingleLayerMasterPanelHeader title={"Slides"} />
+    }
+
+    function renderContent(_selection: any, _itemProvider: any) {
+        return (renderSlideList())
+    }
+
+    // const [selection] = React.useState(new ListSelection({ selectOnFocus: false }));
+    let selection = new ListSelection(true)
+    // const [itemProvider] = React.useState(new ArrayItemProvider(sampleDate));
+    let itemProvider = new ArrayItemProvider(graph?.slides || [])
+    // const [selectedItemObservable] = React.useState(new ObservableValue<string>(sampleDate[0]));
+
     return (
         <Page>
             <Header
@@ -274,16 +305,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
             />
             <div className="page-content page-content-top">
-                <Splitter
-                    fixedElement={SplitterElementPosition.Near}
-                    splitterDirection={SplitterDirection.Vertical}
-                    initialFixedSize={300}
-                    minFixedSize={200}
-                    nearElementClassName="v-scroll-auto custom-scrollbar"
-                    farElementClassName="v-scroll-auto custom-scrollbar"
-                    onRenderNearElement={renderSlideList}
-                    onRenderFarElement={renderSlideContent}
-                />
+                <div className="flex-row">
+                    <SingleLayerMasterPanel
+                        className="master-example-panel show-on-small-screens"
+                        renderHeader={renderHeader}
+                        renderContent={() => renderContent(selection, itemProvider)}
+                    />
+                    {renderSlideContent()}
+                </div>
             </div>
         </Page>
     )
