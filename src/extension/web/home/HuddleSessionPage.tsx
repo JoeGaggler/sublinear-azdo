@@ -29,7 +29,74 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
         console.log("HuddleSessionPage: huddle session", huddleSession);
 
-        // huddleSession.
+        let snapShot2 = huddleSession.snapshot
+        if (!snapShot2) {
+            let workItemQuery = huddle.workItemQuery
+            if (!workItemQuery) {
+                // TODO: fail
+                console.error("HuddleSessionPage: missing work item query");
+                return
+            }
+
+            snapShot2 = await getSnapshot(workItemQuery, p.session)
+            huddleSession.snapshot = snapShot2
+        }
+
+        // TODO: previous work items
+        let snapShot1: Db.HuddleSessionSnapshot;
+        if (p.previousHuddleSessionId) {
+            // TODO: fetch previous huddle session
+            // TODO: fetch snapshot
+            snapShot1 = {
+                workitems: {
+                    items: []
+                }
+            }
+        } else {
+            snapShot1 = {
+                workitems: {
+                    items: []
+                }
+            }
+        }
+
+        // TODO: PERSIST ALL CHANGES TO HUDDLE SESSION
+        console.log("Snapshot1:", snapShot1)
+        console.log("Snapshot2:", snapShot2)
+    }
+
+    async function getSnapshot(query: Db.HuddleWorkItemQuery, session: Azdo.Session): Promise<Db.HuddleSessionSnapshot> {
+
+        let workItemsResult = await Db.queryHuddleWorkItems(query, session)
+        console.log("getSnapshot: workitems result:", workItemsResult)
+
+        if (!workItemsResult.workItems) {
+            console.error("getSnapshot: no work items result") // TODO: bug?
+            return {
+                workitems: {
+                    items: []
+                }
+            }
+        }
+
+        let items: Db.WorkItemSnapshot[] = []
+        for (const wi of workItemsResult.workItems) {
+            let wid = wi.id
+            if (!wid) { continue; } // TODO: error
+            let wi2 = await Azdo.getWorkItem(wid, "System.Title", p.session)
+            console.log("getSnapshot: work item", wid, wi2)
+            items.push({
+                id: wid,
+                title: wi2.fields?.['System.Title'] || ""
+            })
+        }
+
+        // TODO: produce snapshot
+        return {
+            workitems: {
+                items: items
+            }
+        }
     }
 
     async function poll() {

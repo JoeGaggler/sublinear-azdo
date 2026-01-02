@@ -67,30 +67,6 @@ export interface QueryWorkItemsWorkItem {
     url?: string
 }
 
-export async function queryWorkItems(session: Session) {
-    // POST https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?timePrecision={timePrecision}&$top={$top}&api-version=7.2-preview.2
-    let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=101&api-version=7.2-preview.2`
-
-    let body = {
-        query: "Select [System.Id], [System.Title], [System.State] From WorkItems Where [System.WorkItemType] <> 'FOO' AND [State] <> 'FOO' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc ASOF '2026-01-01T02:00:00Z'"
-    }
-
-    let response = await restPost(url, body, session.bearerToken) as QueryWorkItemsResult
-    console.log("queryWorkItems:", response)
-    return response
-
-    // let wi1 = response.workItems?.[0]
-    // console.log("queryWorkItems 1:", wi1?.id, wi1?.url)
-
-    // let r1 = await getWorkItemRevisions(3, session)
-    // console.log("r1", r1.count, r1)
-    // let r2 = r1.value[0].fields?.['System.ChangedDate']
-    // console.log("r2", r2)
-    // let r3 = new Date(r2!)
-    // console.log("r3", r3, r3.getTime(), r3.getTime(), new Date(r3.getTime()))
-    // console.log("r3s", new Date(r3.getTime()).toUTCString(), new Date(r3.getTime()).toISOString())
-}
-
 export interface AzdoResult<T> {
     count: number
     value: T[]
@@ -103,10 +79,23 @@ export interface GetWorkItemRevisionsValue {
 }
 
 export interface WorkItemFields {
+    "System.ChangedDate"?: string
     "System.Id"?: number
     "System.Rev"?: number
     "System.State"?: string
-    "System.ChangedDate"?: string
+    "System.Title"?: string
+}
+
+export interface GetWorkItemResult {
+    fields?: WorkItemFields
+}
+
+export async function getWorkItem(id: number, fields: string, session: Session): Promise<GetWorkItemResult> {
+    // GET https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{id}?fields={fields}&asOf={asOf}&$expand={$expand}&api-version=7.1
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}?$fields=${fields}&api-version=7.1`
+    let response = await restGet(url, session.bearerToken) as QueryWorkItemsResult
+    console.log("queryWorkItems:", response)
+    return response as GetWorkItemResult
 }
 
 export async function getWorkItemRevisions(id: number, session: Session) {

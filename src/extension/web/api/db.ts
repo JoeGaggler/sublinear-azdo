@@ -74,7 +74,21 @@ export interface HuddleSessionListItem {
 }
 
 export interface HuddleSessionStoredDocument extends StoredDocument {
+    // TODO: copy "created" from list item?
+    snapshot?: HuddleSessionSnapshot
+}
 
+export interface HuddleSessionSnapshot {
+    workitems?: WorkItemsSnapshot;
+}
+
+export interface WorkItemsSnapshot {
+    items: WorkItemSnapshot[]
+}
+
+export interface WorkItemSnapshot {
+    id: number
+    title: string
 }
 
 export function syncing<S, T>(source: S[], target: T[], equals: (s: S, t: T) => boolean, removing: (t: T) => void, create: (from: S) => T): void {
@@ -240,6 +254,40 @@ export async function requireHuddleSessionStoredDocument(id: string, session: Az
         }
     }
     return doc;
+}
+
+export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, session: Azdo.Session): Promise<Azdo.QueryWorkItemsResult> {
+    // POST https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?timePrecision={timePrecision}&$top={$top}&api-version=7.2-preview.2
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=101&api-version=7.2-preview.2`
+
+    // query: "Select [System.Id], [System.Title], [System.State] From WorkItems Where [System.WorkItemType] <> 'FOO' AND [State] <> 'FOO' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc ASOF '2026-01-01T02:00:00Z'"
+    let selectString = "SELECT [System.Id], [System.Title], [System.State] From WorkItems"
+    let asOfString = "" // TODO: ASOF
+    let orderString = "ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.CreatedDate] DESC"
+    let whereString = "WHERE [State] <> 'FOO'" // TODO: REMOVE PLACEHODLER
+
+    if (query.areaPath) { whereString += ` AND [System.AreaPath] = '${query.areaPath}'`}
+
+    let wiql = `${selectString} ${whereString} ${orderString} ${asOfString}`
+
+    let body = {
+        query: wiql
+    }
+
+    let response = await Azdo.restPost(url, body, session.bearerToken) as Azdo.QueryWorkItemsResult
+    console.log("queryHuddleWorkItems:", response)
+    return response
+
+    // let wi1 = response.workItems?.[0]
+    // console.log("queryWorkItems 1:", wi1?.id, wi1?.url)
+
+    // let r1 = await getWorkItemRevisions(3, session)
+    // console.log("r1", r1.count, r1)
+    // let r2 = r1.value[0].fields?.['System.ChangedDate']
+    // console.log("r2", r2)
+    // let r3 = new Date(r2!)
+    // console.log("r3", r3, r3.getTime(), r3.getTime(), new Date(r3.getTime()))
+    // console.log("r3s", new Date(r3.getTime()).toUTCString(), new Date(r3.getTime()).toISOString())
 }
 
 // 
