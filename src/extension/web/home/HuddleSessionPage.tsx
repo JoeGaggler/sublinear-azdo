@@ -28,6 +28,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
         console.log("HuddleSessionPage: huddle session", huddleSession);
+
+        // huddleSession.
     }
 
     async function poll() {
@@ -55,6 +57,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 export interface HuddleSessionPageProps {
     huddleId: string
     huddleSessionId: string
+    previousHuddleSessionId?: string
     appNav: AppNav;
     database: Db.Database;
     session: Azdo.Session;

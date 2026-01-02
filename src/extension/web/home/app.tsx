@@ -94,17 +94,7 @@ function App(p: AppProps) {
 
     switch (route.view) {
         case "loading": {
-            return (
-                <Page>
-                    <Header
-                        title={"Loading"}
-                        titleSize={TitleSize.Large}
-                    />
-                    <div className="page-content page-content-top">
-                        <Card>Loading</Card>
-                    </div>
-                </Page>
-            )
+            return (<></>)
         }
         case "home": {
             return (

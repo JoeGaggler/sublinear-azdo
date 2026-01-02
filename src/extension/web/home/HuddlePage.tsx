@@ -121,15 +121,7 @@ function HuddlePage(p: HuddlePageProps) {
 
         console.log("startSession: sessions", sessionsDoc)
 
-        p.appNav.navTo({
-            view: "huddle_session",
-            data: {
-                huddleId: huddle.id,
-                huddleSessionId: newSession.id,
-            },
-            back: p.appNav.current,
-            title: `huddle_session: ${newSession.id}`
-        });
+        onSelectHuddleSession(newSession)
     }
 
     function getHeaderCommandBarItems(): IHeaderCommandBarItem[] {
@@ -159,6 +151,31 @@ function HuddlePage(p: HuddlePageProps) {
         return items
     }
 
+    async function onSelectHuddleSession(newSession: Db.HuddleSessionListItem) {
+        if (!huddle) {
+            console.warn("startSession: no huddle")
+            return
+        }
+
+        // TODO: load previousId
+        const previousId: string | undefined = undefined; 
+
+        await onOpenHuddleSession(huddle.id, newSession.id, previousId)
+    }
+
+    async function onOpenHuddleSession(huddleId: String, huddleSessionId: String, previousHuddleSessionId?: string) {
+        p.appNav.navTo({
+            view: "huddle_session",
+            data: {
+                huddleId: huddleId,
+                huddleSessionId: huddleSessionId,
+                previousHuddleSessionId: previousHuddleSessionId
+            },
+            back: p.appNav.current,
+            title: `huddle_session: ${huddleSessionId}`
+        });
+    }
+
     if (huddle) {
         return (
             <Page>
@@ -174,8 +191,8 @@ function HuddlePage(p: HuddlePageProps) {
                             (huddle?.id && huddleSessions?.items) && (
                                 <HuddleSessionList
                                     list={huddleSessions.items}
-                                    appNav={p.appNav}
                                     huddleId={huddle.id}
+                                    onSelect={onSelectHuddleSession}
                                 />
                             )
                         }
