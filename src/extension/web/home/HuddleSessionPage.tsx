@@ -18,16 +18,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     React.useEffect(() => { init(); return; }, []);
     async function init() {
-        let huddle = await Db.getHuddleDocument(p.id, p.session)
+        let huddle = await Db.getHuddleDocument(p.huddleId, p.session)
         if (!huddle) {
             // TODO: fail
             console.error("HuddleSessionPage: missing huddle");
             return
         }
-
-        // await Db.session
-
         console.log("HuddleSessionPage: huddle", huddle);
+
+        let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
+        console.log("HuddleSessionPage: huddle session", huddleSession);
     }
 
     async function poll() {
@@ -53,7 +53,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 }
 
 export interface HuddleSessionPageProps {
-    id: string
+    huddleId: string
+    huddleSessionId: string
     appNav: AppNav;
     database: Db.Database;
     session: Azdo.Session;

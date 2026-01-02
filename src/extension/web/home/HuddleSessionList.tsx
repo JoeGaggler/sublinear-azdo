@@ -16,7 +16,10 @@ function HuddleSessionList(p: HuddleSessionListProps) {
         console.log("onSelectSession:", item)
         p.appNav.navTo({
             view: "huddle_session",
-            data: item.id,
+            data: {
+                huddleId: p.huddleId,
+                huddleSessionId: item.id,
+            },
             back: p.appNav.current,
             title: `huddle_session: ${item.id}`
         });
@@ -61,6 +64,7 @@ function HuddleSessionList(p: HuddleSessionListProps) {
 export default HuddleSessionList;
 
 export interface HuddleSessionListProps {
+    huddleId: string;
     appNav: AppNav;
     list: Db.HuddleSessionListItem[]
 }

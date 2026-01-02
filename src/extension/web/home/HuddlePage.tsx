@@ -123,7 +123,10 @@ function HuddlePage(p: HuddlePageProps) {
 
         p.appNav.navTo({
             view: "huddle_session",
-            data: newSession.id,
+            data: {
+                huddleId: huddle.id,
+                huddleSessionId: newSession.id,
+            },
             back: p.appNav.current,
             title: `huddle_session: ${newSession.id}`
         });
@@ -168,10 +171,11 @@ function HuddlePage(p: HuddlePageProps) {
                 <div className="page-content page-content-top">
                     <Card>
                         {
-                            (huddleSessions?.items) && (
+                            (huddle?.id && huddleSessions?.items) && (
                                 <HuddleSessionList
                                     list={huddleSessions.items}
                                     appNav={p.appNav}
+                                    huddleId={huddle.id}
                                 />
                             )
                         }

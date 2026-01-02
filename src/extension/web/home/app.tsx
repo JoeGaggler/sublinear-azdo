@@ -144,8 +144,10 @@ function App(p: AppProps) {
             )
         }
         case "huddle_session": {
-            let huddleSessionId = route.data
-            if (!huddleSessionId) {
+            // TODO: strong type
+            let huddleId = route.data?.huddleId
+            let huddleSessionId = route.data?.huddleSessionId
+            if (!huddleId || !huddleSessionId) {
                 console.error("Invalid data for huddle session:", route.data)
                 navTo({
                     view: "error",
@@ -159,7 +161,8 @@ function App(p: AppProps) {
                     appNav={createAppNav(route)}
                     database={database}
                     session={sessionRef.current}
-                    id={huddleSessionId}
+                    huddleId={huddleId}
+                    huddleSessionId={huddleSessionId}
                 />
             )
         }
