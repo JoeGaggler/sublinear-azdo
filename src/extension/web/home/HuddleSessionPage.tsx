@@ -19,6 +19,13 @@ interface HuddleSlide {
     type: string
     id: number
     title: string
+    fieldChanges: HuddleSlideFieldChange[]
+}
+
+interface HuddleSlideFieldChange {
+    what: string
+    prev: string
+    next: string
 }
 
 function HuddleSessionPage(p: HuddleSessionPageProps) {
@@ -134,25 +141,28 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             type: "new",
             id: wi2.id,
             title: wi2.title,
+            fieldChanges: []
         })
     }
 
     async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
-        let changes: string[] = []
-        if (wi1.title !== wi2.title) { changes.push(`Title: "${wi1.title}" to "${wi2.title}"`) }
+        let fieldChanges: HuddleSlideFieldChange[] = []
+        if (wi1.title !== wi2.title) { fieldChanges.push({ what: "title", prev: wi1.title, next: wi2.title }) }
         // hasChanges = hasChanges || (wi1.priority !== wi2.priority) // TODO: priority should be based on position of snapshot in huddle session, not the raw value
 
-        if (changes.length > 0) {
+        if (fieldChanges.length > 0) {
             return ({
                 type: "update",
                 id: wi2.id,
-                title: wi2.title + " --- " + changes.join(", "), // TODO: proper change type
+                title: wi2.title,
+                fieldChanges: fieldChanges
             })
         } else {
             return ({
                 type: "same",
                 id: wi2.id,
                 title: wi2.title,
+                fieldChanges: []
             })
         }
     }
@@ -163,6 +173,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             type: "final",
             id: wi1.id,
             title: wi1.title,
+            fieldChanges: []
         })
     }
 
@@ -210,10 +221,23 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return slides.map((s, i) => {
             return (
                 <Card>
-                    <Header
-                        title={`${s.type} Slide #${i}  ${s.id} - ${s.title}`}
-                        titleSize={TitleSize.Small}
-                    />
+                    <div className="flex-column">
+                        <Header
+                            title={`${s.type} Slide #${i}  ${s.id} - ${s.title}`}
+                            titleSize={TitleSize.Small}
+                        />
+                        {
+                            (s.fieldChanges) && (
+                                s.fieldChanges.map(fc => {
+                                    return (
+                                        <div>
+                                            {fc.what} - {fc.prev} - {fc.next}
+                                        </div>
+                                    )
+                                })
+                            )
+                        }
+                    </div>
                 </Card>
             )
         })
