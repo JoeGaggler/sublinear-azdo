@@ -119,6 +119,7 @@ export interface Session {
     organization: string;
     team: string;
     project: string;
+    projectName: string;
 }
 
 export async function refreshSessionInfo(): Promise<Session | null> {
@@ -143,6 +144,7 @@ export async function refreshSessionInfo(): Promise<Session | null> {
             organization: host.name,
             team: team.id,
             project: web.project.id,
+            projectName: web.project.name
         };
     }
     catch (err) {

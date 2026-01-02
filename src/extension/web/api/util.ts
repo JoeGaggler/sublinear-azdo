@@ -10,7 +10,8 @@ export function uuid(prefix: string): string {
 }
 
 export function msecNow(): number { return Date.now(); }
-export function msecToDate(msec: number) { return new Date(msec); }
+export function msecToDate(msec: number): Date { return new Date(msec); }
+export function msecToISO(msec: number): string { return new Date(msec).toISOString(); }
 export function msecFromISO(iso: string): number { return new Date(iso).getTime(); }
 
 export function forEachReversed<T>(array: T[], iteration: (t: T) => void) {

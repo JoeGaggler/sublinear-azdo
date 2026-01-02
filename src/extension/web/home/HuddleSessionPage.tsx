@@ -40,9 +40,15 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         console.log("HuddleSessionPage: huddle", huddle);
 
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
+        huddleSession.created = huddleSession.created || Util.msecNow()
         console.log("HuddleSessionPage: huddle session", huddleSession);
 
         let snapShot2 = huddleSession.snapshot
+
+        // TODO: FOR DEBUGGING ONLY, ALWAYS GENERATE A NEW SNAPSHOT!
+        snapShot2 = undefined
+        // TODO: REMOVE THIS DEBUGGING CODE
+
         if (!snapShot2) {
             let workItemQuery = huddle.workItemQuery
             if (!workItemQuery) {
@@ -51,7 +57,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 return
             }
 
-            snapShot2 = await getSnapshot(workItemQuery, p.session)
+            let created2 = huddleSession.created || Util.msecNow()
+            snapShot2 = await getSnapshot(workItemQuery, created2, p.session)
             huddleSession.snapshot = snapShot2
         }
 
@@ -113,6 +120,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             debugWorkItems: workItems1,
             slides: slides,
         })
+
+        let savedHuddleSession = await Db.upsertHuddleSession(huddleSession, p.session)
+        if (!savedHuddleSession) {
+            console.error("failed to upsert huddle session:", huddleSession)
+        }
     }
 
     async function createNewSlide(wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
@@ -141,9 +153,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         })
     }
 
-    async function getSnapshot(query: Db.HuddleWorkItemQuery, session: Azdo.Session): Promise<Db.HuddleSessionSnapshot> {
-
-        let workItemsResult = await Db.queryHuddleWorkItems(query, session)
+    async function getSnapshot(query: Db.HuddleWorkItemQuery, asOf: number | null, session: Azdo.Session): Promise<Db.HuddleSessionSnapshot> {
+        let workItemsResult = await Db.queryHuddleWorkItems(query, asOf, session)
         console.log("getSnapshot: workitems result:", workItemsResult)
 
         if (!workItemsResult.workItems) {
@@ -227,14 +238,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 <Card>
                     <div className="flex-column">
                         <Header
-                            title={`Session: ${p.huddleSessionId}`}
+                            title={`Session: ${p.huddleSessionId} - CREATED?`}
                             titleSize={TitleSize.Medium}
                         />
                         {
                             (p.previousHuddleSessionId &&
                                 (
                                     <Header
-                                        title={`Previous: ${p.previousHuddleSessionId}`}
+                                        title={`Previous: ${p.previousHuddleSessionId} - CREATED?`}
                                         titleSize={TitleSize.Medium}
                                     />
                                 )

@@ -1,6 +1,6 @@
 import * as Azdo from "./azdo";
 import type { StoredDocument } from "./azdo";
-import { spliceWhere } from "./util";
+import * as Util from "./util";
 
 // collection of top level documents
 export const main_collection_id = "main";
@@ -62,6 +62,7 @@ export interface HuddleStoredDocument extends StoredDocument {
 
 export interface HuddleWorkItemQuery {
     areaPath: string
+    asOf?: number
 }
 
 export interface HuddleSessionListStoredDocument extends StoredDocument {
@@ -74,7 +75,7 @@ export interface HuddleSessionListItem {
 }
 
 export interface HuddleSessionStoredDocument extends StoredDocument {
-    // TODO: copy "created" from list item?
+    created?: number
     snapshot?: HuddleSessionSnapshot
 }
 
@@ -146,7 +147,7 @@ export async function deleteHuddle(data: HuddleItem, session: Azdo.Session): Pro
         console.error("deleteHuddle: failed to get document items")
         return null;
     }
-    if (!spliceWhere(doc.huddleInfos.items, i => i.id === data.id)) {
+    if (!Util.spliceWhere(doc.huddleInfos.items, i => i.id === data.id)) {
         console.error("deleteHuddle: not in doc?")
     }
 
@@ -257,22 +258,63 @@ export async function requireHuddleSessionStoredDocument(id: string, session: Az
     return doc;
 }
 
-export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, session: Azdo.Session): Promise<Azdo.QueryWorkItemsResult> {
+export async function upsertHuddleSession(data: HuddleSessionStoredDocument, session: Azdo.Session): Promise<HuddleSessionStoredDocument | null> {
+    let savedHuddleSession = await Azdo.upsertSharedDocument(huddle_session_collection_id2, data, session)
+    if (!savedHuddleSession) {
+        console.error("upsertHuddleSession: upsert huddle failed")
+        return null;
+    }
+
+    return savedHuddleSession
+
+    // TODO: UPDATE THE LIST?
+
+    // let nextHuddleInfo: HuddleItem = {
+    //     id: data.id,
+    //     name: data.name,
+    // }
+
+    // let prevHuddles = await requireHuddleListStoredDocument(session);
+
+    // let idx = prevHuddles.huddleInfos.items.findIndex(h => h.id === data.id)
+    // if (idx != -1) {
+    //     prevHuddles.huddleInfos.items.splice(idx, 1, nextHuddleInfo)
+    // } else {
+    //     prevHuddles.huddleInfos.items.push(nextHuddleInfo)
+    // }
+
+    // let savedHuddles = await Azdo.upsertSharedDocument(main_collection_id, prevHuddles, session)
+    // if (!savedHuddles) {
+    //     console.error("newHuddle: upsert huddles failed")
+    //     return null;
+    // }
+
+    // return {
+    //     item: savedHuddle,
+    //     list: savedHuddles,
+    //     info: nextHuddleInfo,
+    // }
+}
+
+export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: number | null, session: Azdo.Session): Promise<Azdo.QueryWorkItemsResult> {
     // POST https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?timePrecision={timePrecision}&$top={$top}&api-version=7.2-preview.2
     let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=101&api-version=7.2-preview.2`
 
     // query: "Select [System.Id], [System.Title], [System.State] From WorkItems Where [System.WorkItemType] <> 'FOO' AND [State] <> 'FOO' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc ASOF '2026-01-01T02:00:00Z'"
-    let selectString = "SELECT [System.Id], [System.Title], [System.State] From WorkItems"
-    let asOfString = "" // TODO: ASOF
+    let selectString = "SELECT [System.Id], [System.Title], [System.State] FROM WorkItems"
+    let asOfString = (asOf) ? `ASOF '${Util.msecToISO(asOf)}'` : ""
     let orderString = "ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.CreatedDate] DESC"
-    let whereString = "WHERE [State] <> 'FOO'" // TODO: REMOVE PLACEHODLER
+    let whereString = `WHERE [System.TeamProject] = '${session.projectName}'`
+    
 
     if (query.areaPath) { whereString += ` AND [System.AreaPath] = '${query.areaPath}'`}
 
-    let wiql = `${selectString} ${whereString} ${orderString} ${asOfString}`
+    // let wiqlQuery = `${selectString}  ${whereString}  ${orderString}  ${asOfString}`
+    let wiqlDebug = `${selectString}\n${whereString}\n${orderString}\n${asOfString}`
+    console.log("WIQL", wiqlDebug, asOf)
 
     let body = {
-        query: wiql
+        query: wiqlDebug
     }
 
     let response = await Azdo.restPost(url, body, session.bearerToken) as Azdo.QueryWorkItemsResult

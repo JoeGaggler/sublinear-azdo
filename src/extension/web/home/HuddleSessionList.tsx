@@ -13,6 +13,7 @@ function HuddleSessionList(p: HuddleSessionListProps) {
 
     async function onDeleteSession(item: Db.HuddleSessionListItem) {
         console.error("TODO: onDeleteSession:", item)
+        p.onDelete?.(item);
     }
 
     return (
@@ -53,4 +54,5 @@ export interface HuddleSessionListProps {
     huddleId: string;
     list: Db.HuddleSessionListItem[];
     onSelect?: (item: Db.HuddleSessionListItem) => Promise<void>;
+    onDelete?: (item: Db.HuddleSessionListItem) => Promise<void>;
 }

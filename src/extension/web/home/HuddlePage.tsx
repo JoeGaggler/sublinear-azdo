@@ -156,10 +156,13 @@ function HuddlePage(p: HuddlePageProps) {
             console.warn("onSelectHuddleSession: no huddle")
             return
         }
+
+        let huddleSessions = await Db.requireHuddleSessionListStoredDocument(huddle, p.session)
         if (!huddleSessions) {
-            console.warn("onSelectHuddleSession: no huddle sessions")
+            console.warn("onSelectHuddleSession: no sessions")
             return
         }
+        setHuddleSessions(huddleSessions)
 
         let index1 = huddleSessions.items.findIndex(s => s.id === newSession.id)
         if (index1 == -1) {
@@ -182,6 +185,35 @@ function HuddlePage(p: HuddlePageProps) {
         }
 
         await onOpenHuddleSession(huddle.id, newSession.id, previousId)
+    }
+
+    async function onDeleteHuddleSession(item: Db.HuddleSessionListItem) {
+        if (!huddle) {
+            console.warn("onDeleteHuddleSession: no huddle")
+            return
+        }
+
+        let sessionsDoc = await Db.requireHuddleSessionListStoredDocument(huddle, p.session)
+        if (!sessionsDoc) {
+            console.warn("onDeleteHuddleSession: no sessions")
+            return
+        }
+
+        let index1 = sessionsDoc.items.findIndex(s => s.id === item.id)
+        if (index1 == -1) {
+            console.warn("onDeleteHuddleSession: no huddle in sessions list")
+            return
+        }
+
+        sessionsDoc.items.splice(index1, 1)
+
+        let saved = await Db.upsertHuddleSessionList(sessionsDoc, p.session);
+        if (!saved) {
+            console.warn("onDeleteHuddleSession: upsert failed")
+            return
+        }
+
+        setHuddleSessions(saved)
     }
 
     async function onOpenHuddleSession(huddleId: String, huddleSessionId: String, previousHuddleSessionId?: string) {
@@ -214,6 +246,7 @@ function HuddlePage(p: HuddlePageProps) {
                                     list={huddleSessions.items}
                                     huddleId={huddle.id}
                                     onSelect={onSelectHuddleSession}
+                                    onDelete={onDeleteHuddleSession}
                                 />
                             )
                         }
