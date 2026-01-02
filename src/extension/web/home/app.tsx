@@ -61,11 +61,17 @@ function App(p: AppProps) {
         const query = await nav.getQueryParams();
         const hash = await nav.getHash();
         console.log("init: nav params", query, hash);
-        setRoute({
-            view: "home",
-            data: "",
-            title: "Home - Sublinear",
-        }); // TODO: route via query/hash
+        setRoute(
+            {
+                view: "huddles",
+                title: "Huddles",
+                back: {
+                    view: "home",
+                    data: "",
+                    title: "Home - Sublinear",
+                }
+            }
+        ); // TODO: route via query/hash
     }
 
     async function poll() {
@@ -137,6 +143,7 @@ function App(p: AppProps) {
             // TODO: strong type
             let huddleId = route.data?.huddleId
             let huddleSessionId = route.data?.huddleSessionId
+            let previousHuddleSessionId = route.data?.previousHuddleSessionId
             if (!huddleId || !huddleSessionId) {
                 console.error("Invalid data for huddle session:", route.data)
                 navTo({
@@ -153,6 +160,7 @@ function App(p: AppProps) {
                     session={sessionRef.current}
                     huddleId={huddleId}
                     huddleSessionId={huddleSessionId}
+                    previousHuddleSessionId={previousHuddleSessionId}
                 />
             )
         }

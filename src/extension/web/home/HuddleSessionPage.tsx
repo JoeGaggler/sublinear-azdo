@@ -226,7 +226,20 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             <div className="page-content page-content-top">
                 <Card>
                     <div className="flex-column">
-                        TODO: Huddle Session
+                        <Header
+                            title={`Session: ${p.huddleSessionId}`}
+                            titleSize={TitleSize.Medium}
+                        />
+                        {
+                            (p.previousHuddleSessionId &&
+                                (
+                                    <Header
+                                        title={`Previous: ${p.previousHuddleSessionId}`}
+                                        titleSize={TitleSize.Medium}
+                                    />
+                                )
+                            )
+                        }
                     </div>
                 </Card>
                 <hr />

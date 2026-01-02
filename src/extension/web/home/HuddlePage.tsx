@@ -153,12 +153,33 @@ function HuddlePage(p: HuddlePageProps) {
 
     async function onSelectHuddleSession(newSession: Db.HuddleSessionListItem) {
         if (!huddle) {
-            console.warn("startSession: no huddle")
+            console.warn("onSelectHuddleSession: no huddle")
+            return
+        }
+        if (!huddleSessions) {
+            console.warn("onSelectHuddleSession: no huddle sessions")
             return
         }
 
-        // TODO: load previousId
-        const previousId: string | undefined = undefined; 
+        let index1 = huddleSessions.items.findIndex(s => s.id === newSession.id)
+        if (index1 == -1) {
+            console.warn("onSelectHuddleSession: no huddle in sessions list")
+            return
+        }
+
+        let previousId: string | undefined = undefined;
+        let index2 = index1 + 1
+        console.log("onSelectHuddleSession: 1/2/len", index1, index2, huddleSessions.items.length)
+        if (index2 >= huddleSessions.items.length) {
+            console.warn("onSelectHuddleSession: no second huddle")
+        } else {
+            let oldSession = huddleSessions.items[index2];
+            if (!oldSession) {
+                console.warn("onSelectHuddleSession: no old huddle", huddleSessions.items)
+                return
+            }
+            previousId = oldSession.id;
+        }
 
         await onOpenHuddleSession(huddle.id, newSession.id, previousId)
     }
