@@ -301,7 +301,7 @@ export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: num
     let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=101&api-version=7.2-preview.2`
 
     // query: "Select [System.Id], [System.Title], [System.State] From WorkItems Where [System.WorkItemType] <> 'FOO' AND [State] <> 'FOO' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc ASOF '2026-01-01T02:00:00Z'"
-    let selectString = "SELECT [System.Id], [System.Title], [System.State] FROM WorkItems"
+    let selectString = "SELECT [System.Id] FROM WorkItems"
     let asOfString = (asOf) ? `ASOF '${Util.msecToISO(asOf)}'` : ""
     let orderString = "ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.CreatedDate] DESC"
     let whereString = `WHERE [System.TeamProject] = '${session.projectName}'`

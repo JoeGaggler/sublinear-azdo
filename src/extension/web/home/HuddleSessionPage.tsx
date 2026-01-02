@@ -92,7 +92,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         let slides: HuddleSlide[] = []
         for (let wi2 of workItems2) {
             // NEW
-            let wi1 = workItems1.find(w => w.id !== wi2.id)
+            let wi1 = workItems1.find(w => w.id === wi2.id)
             if (!wi1) {
                 let nextSlide = await createNewSlide(wi2);
                 slides.push(nextSlide)
@@ -137,13 +137,24 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         })
     }
 
-    async function createFoundSlide(_wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
-        // TODO: has changes or not)
-        return ({
-            type: "same",
-            id: wi2.id,
-            title: wi2.title,
-        })
+    async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
+        let changes: string[] = []
+        if (wi1.title !== wi2.title) { changes.push(`Title: "${wi1.title}" to "${wi2.title}"`) }
+        // hasChanges = hasChanges || (wi1.priority !== wi2.priority) // TODO: priority should be based on position of snapshot in huddle session, not the raw value
+
+        if (changes.length > 0) {
+            return ({
+                type: "update",
+                id: wi2.id,
+                title: wi2.title + " --- " + changes.join(", "), // TODO: proper change type
+            })
+        } else {
+            return ({
+                type: "same",
+                id: wi2.id,
+                title: wi2.title,
+            })
+        }
     }
 
     async function createFinalSlide(wi1: Db.WorkItemSnapshot): Promise<HuddleSlide> {
@@ -172,8 +183,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         for (const wi of workItemsResult.workItems) {
             let wid = wi.id
             if (!wid) { continue; } // TODO: error
-            let fields = "System.Title,Microsoft.VSTS.Common.Priority"
-            let wi2 = await Azdo.getWorkItem(wid, fields, p.session)
+            let wi2 = await Azdo.getWorkItem(wid, null, p.session)
             console.log("getSnapshot: work item", wid, wi2)
             items.push({
                 id: wid,
@@ -192,26 +202,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     async function poll() {
         console.log("HuddleSessionPage poll");
-    }
-
-    function debugSnapshotCard() {
-        if (!graph?.debugWorkItems) { return <></> }
-        console.log("debug2", graph?.debugWorkItems)
-        return (
-            <Card>
-                <div className="flex-column">
-                    {
-                        graph.debugWorkItems.map(s => {
-                            return (
-                                <Header
-                                    title={`${s.id} - ${s.title} - ${s.priority}`}
-                                    titleSize={TitleSize.Small}
-                                />)
-                        })
-                    }
-                </div>
-            </Card>
-        )
     }
 
     function debugSlides() {
@@ -257,8 +247,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 </Card>
                 <hr />
                 {debugSlides()}
-                <hr />
-                {debugSnapshotCard()}
             </div>
         </Page>
     )

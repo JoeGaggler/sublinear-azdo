@@ -91,9 +91,10 @@ export interface GetWorkItemResult {
     fields?: WorkItemFields
 }
 
-export async function getWorkItem(id: number, fields: string, session: Session): Promise<GetWorkItemResult> {
+export async function getWorkItem(id: number, fields: string | null, session: Session): Promise<GetWorkItemResult> {
+    let fieldsQueryParam = fields ? `&$fields=${fields}` : ""
     // GET https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{id}?fields={fields}&asOf={asOf}&$expand={$expand}&api-version=7.1
-    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}?$fields=${fields}&api-version=7.1`
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}?api-version=7.1${fieldsQueryParam}`
     let response = await restGet(url, session.bearerToken) as QueryWorkItemsResult
     console.log("queryWorkItems:", response)
     return response as GetWorkItemResult
