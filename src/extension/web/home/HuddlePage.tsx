@@ -60,7 +60,8 @@ function HuddlePage(p: HuddlePageProps) {
             let nextHuddle: Db.HuddleStoredDocument = { ...huddle }
             nextHuddle.name = data.name
             nextHuddle.workItemQuery = {
-                areaPath: data.areaPath
+                areaPath: data.areaPath,
+                includeSubAreas: data.includeSubAreas,
             }
 
             let upsertResult = await Db.upsertHuddle(nextHuddle, p.session)

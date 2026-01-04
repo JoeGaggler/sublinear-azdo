@@ -63,6 +63,7 @@ export interface HuddleStoredDocument extends StoredDocument {
 export interface HuddleWorkItemQuery {
     areaPath: string
     asOf?: number
+    includeSubAreas?: boolean
 }
 
 export interface HuddleSessionListStoredDocument extends StoredDocument {
@@ -325,7 +326,11 @@ export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: num
     let orderString = "ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.CreatedDate] DESC"
     let whereString = `WHERE [System.TeamProject] = '${session.projectName}'`
 
-    if (query.areaPath) { whereString += ` AND [System.AreaPath] = '${query.areaPath}'` }
+    if (query.areaPath) {
+        let op = "="
+        if (query.includeSubAreas == true) { op = "UNDER" }
+        whereString += ` AND [System.AreaPath] ${op} '${query.areaPath}'`
+    }
 
     // let wiqlQuery = `${selectString}  ${whereString}  ${orderString}  ${asOfString}`
     let wiqlDebug = `${selectString}\n${whereString}\n${orderString}\n${asOfString}`

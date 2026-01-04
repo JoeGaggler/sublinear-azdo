@@ -4,15 +4,18 @@ import * as Db from '../api/db.ts';
 import { TitleSize } from "azure-devops-ui/Header";
 import { Panel } from "azure-devops-ui/Panel";
 import { TextField, TextFieldWidth } from "azure-devops-ui/TextField";
+import { Checkbox } from "azure-devops-ui/Checkbox";
 
 export function EditHuddlePanel(p: EditHuddlePanelProps) {
     const [name, setName] = useState(p.huddle.name)
     const [areaPath, setAreaPath] = useState(p.huddle.workItemQuery?.areaPath || "")
+    const [subAreasChecked, setSubAreasChecked] = useState(p.huddle.workItemQuery?.includeSubAreas || false)
 
     async function onCommit() {
         let data: EditHuddlePanelValues = {
             name: name,
             areaPath: areaPath,
+            includeSubAreas: subAreasChecked,
         }
         await p.onCommit(data);
     }
@@ -41,7 +44,7 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
                 { text: "Save", onClick: () => onCommit(), primary: true, },
             ]}
         >
-            <div className="flex-column">
+            <div className="flex-column rhythm-vertical-8">
                 <TextField
                     label={"Name"}
                     value={name}
@@ -55,6 +58,12 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
                     onChange={(e, nextValue) => e && setAreaPath(nextValue)}
                     width={TextFieldWidth.standard}
                 />
+
+                <Checkbox
+                    onChange={(_event, checked) => (setSubAreasChecked(checked))}
+                    checked={subAreasChecked}
+                    label="Include sub-areas"
+                />
             </div>
         </Panel>
     )
@@ -63,6 +72,7 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
 export interface EditHuddlePanelValues {
     name: string
     areaPath: string
+    includeSubAreas: boolean
 }
 
 export interface EditHuddlePanelProps {
