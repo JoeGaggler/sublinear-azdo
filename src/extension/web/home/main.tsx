@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { SurfaceBackground, SurfaceContext } from "azure-devops-ui/Surface";
+import { Spacing, SurfaceBackground, SurfaceContext } from "azure-devops-ui/Surface";
 import * as SDK from 'azure-devops-extension-sdk';
 import App, { type AppProps, type AppSingleton } from './app.tsx'
 import * as Azdo from '../api/azdo.ts';
@@ -13,7 +13,7 @@ let render = (p: AppProps) => {
   console.log("render", p);
   ReactDOM.render(
     <React.StrictMode>
-      <SurfaceContext.Provider value={{ background: SurfaceBackground.neutral }}>
+      <SurfaceContext.Provider value={{ background: SurfaceBackground.neutral, spacing: Spacing.default }}>
         <App sessionInfo={p.sessionInfo} singleton={appSingleton} />
       </SurfaceContext.Provider>
     </React.StrictMode>,

@@ -1,3 +1,5 @@
+import * as SDK from 'azure-devops-extension-sdk';
+
 import * as Azdo from '../api/azdo.ts';
 import * as Db from '../api/db.ts';
 import * as Util from '../api/util.ts';
@@ -17,6 +19,9 @@ import { Icon, IconSize, type IIconProps } from 'azure-devops-ui/Icon';
 import { Pill, PillVariant } from "azure-devops-ui/Pill";
 import { PillGroup, PillGroupOverflow } from "azure-devops-ui/PillGroup";
 import { Card } from "azure-devops-ui/Card";
+import type { IHeaderCommandBarItem } from 'azure-devops-ui/HeaderCommandBar';
+import { type IWorkItemFormNavigationService } from "azure-devops-extension-api/WorkItemTracking";
+
 
 interface HuddleGraph {
     debugWorkItems: Db.WorkItemSnapshot[]
@@ -418,6 +423,32 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         )
     }
 
+    async function onOpenWorkItem(wid: number) {
+        const navSvc = await SDK.getService<IWorkItemFormNavigationService>(
+            "ms.vss-work-web.work-item-form-navigation-service"
+        );
+        
+        await navSvc.openWorkItem(wid, true)
+    };
+
+    function getSlideBarCommandItems(slide: HuddleSlide) {
+        let items: IHeaderCommandBarItem[] = []
+
+        let editItem: IHeaderCommandBarItem = {
+            id: "openWorkItem",
+            text: "Open",
+            iconProps: { iconName: "OpenInNewTab" },
+            onActivate: () => {
+                onOpenWorkItem(slide.id)
+            },
+            isPrimary: true,
+            important: true,
+        }
+        items.push(editItem)
+
+        return items;
+    }
+
     function renderSlideContent() {
         let slideIndex = selectedSlide
         let slides = graph?.slides
@@ -435,13 +466,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         return (
             <div className='padding-left-8 full-width'>
+                <Header
+                    titleIconProps={iconPropsForSlideType(slide.type)}
+                    title={slide.title}
+                    titleSize={TitleSize.Medium}
+                    commandBarItems={getSlideBarCommandItems(slide)}
+                />
                 <Card className='flex-self-start'>
-                    <div className='flex-column'>
-                        <Header
-                            titleIconProps={iconPropsForSlideType(slide.type)}
-                            title={slide.title}
-                            titleSize={TitleSize.Medium}
-                        />
+                    <div className='flex-column full-width'>
                         {
                             slide.fieldChanges.map(c => {
                                 return (
