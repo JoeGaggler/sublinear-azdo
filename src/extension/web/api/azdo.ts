@@ -86,6 +86,7 @@ export interface WorkItemFields {
     "System.Rev"?: number
     "System.State"?: string
     "System.Title"?: string
+    "System.Reason"?: string
     "System.CommentCount"?: number
     "System.AreaPath"?: string
     "System.Parent"?: number

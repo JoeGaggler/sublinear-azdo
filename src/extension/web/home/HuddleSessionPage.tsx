@@ -227,6 +227,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "System.WorkItemType", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
         if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "System.Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
         if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Common.BacklogPriority", w => w.backlogPriority, wi1, wi2)) }
+        if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("System.Reason", w => w.reason, wi1, wi2)) }
         if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Scheduling.StartDate", w => w.startDate, wi1, wi2)) }
         if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Scheduling.TargetDate", w => w.targetDate, wi1, wi2)) }
         if (wi1.parent !== wi2.parent) { { fieldChanges.push(getParentFieldChange(wi1, wi2)) } }
@@ -303,6 +304,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 backlogPriority: wi2.fields?.['Microsoft.VSTS.Common.BacklogPriority'],
                 startDate: wi2.fields?.['Microsoft.VSTS.Scheduling.StartDate'],
                 targetDate: wi2.fields?.['Microsoft.VSTS.Scheduling.TargetDate'],
+                reason: wi2.fields?.['System.Reason'],
             })
         }
 
@@ -415,19 +417,37 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderSlideContent() {
-        let s: string = (selectedSlide == undefined) ? "none" : `${selectedSlide + 1}`
-        let a: string = (graph == undefined || graph.slides.length < 1) ? "none" : `${graph.slides.length}`
+        let slideIndex = selectedSlide
+        let slides = graph?.slides
+        if (slideIndex === undefined || slides === undefined || slideIndex >= slides.length) {
+            return <></>
+        }
+
+        let slide = slides[slideIndex]
+        if (!slide) {
+            return <></>
+        }
+
+        let s: string = `${slideIndex + 1}`
+        let a: string = `${slides.length}`
 
         return (
-            <div style={{ padding: "16px" }}>
+            <div style={{ padding: "16px" }} className='flex-column full-width'>
                 Slide #{s} of {a}
                 <br />
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
-                incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-                exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
-                irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-                pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia
-                deserunt mollit anim id est laborum.
+                {
+                    slide.fieldChanges.map(c => {
+                        return (
+                            <div className='flex-row full-width rhythm-horizontal-8'>
+                                <div>{c.what}</div>
+                                <Icon iconName={"CircleRing"} size={IconSize.small} />
+                                <div>{c.prev}</div>
+                                <Icon iconName={"ChevronRight"} size={IconSize.small} />
+                                <div>{c.next}</div>
+                            </div>
+                        )
+                    })
+                }
             </div>
         );
     }

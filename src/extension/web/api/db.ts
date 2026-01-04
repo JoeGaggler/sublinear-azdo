@@ -93,6 +93,7 @@ export interface WorkItemSnapshot {
     priority: number
 
     state?: string
+    reason?: string
     areaPath?: string
     iterationPath?: string
     description?: string
