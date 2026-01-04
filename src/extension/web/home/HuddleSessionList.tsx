@@ -1,10 +1,13 @@
 import * as Db from '../api/db.ts';
+import * as Util from '../api/util.ts';
 // import React from 'react'
 
 import { ScrollableList, ListItem } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { Header, TitleSize } from 'azure-devops-ui/Header';
 import { IconSize } from 'azure-devops-ui/Icon';
+import { Ago } from "azure-devops-ui/Ago";
+import { AgoFormat } from "azure-devops-ui/Utilities/Date";
 
 function HuddleSessionList(p: HuddleSessionListProps) {
     async function onSelectSession(item: Db.HuddleSessionListItem) {
@@ -19,6 +22,7 @@ function HuddleSessionList(p: HuddleSessionListProps) {
 
     return (
         <ScrollableList
+            className='full-width'
             itemProvider={new ArrayItemProvider<Db.HuddleSessionListItem>(p.list || [])}
             selection={undefined}
             onSelect={(_event, data) => onSelectSession(data.data)}
@@ -27,8 +31,8 @@ function HuddleSessionList(p: HuddleSessionListProps) {
             renderRow={
                 (idx, session, details) => {
                     return <ListItem key={`list-item-${idx}`} index={idx} details={details}>
-                        <Header
-                            title={session.id}
+                        <Header className='full-width'
+                            title={<Ago date={Util.msecToDate(session.created)} format={AgoFormat.Compact} />}
                             titleSize={TitleSize.Small}
                             titleIconProps={{
                                 iconName: "ProFootball",

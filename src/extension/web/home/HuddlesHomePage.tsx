@@ -92,6 +92,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         dbHuddles.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
         // let selection = new ListSelection(true);
         return <ScrollableList
+            className='full-width'
             itemProvider={new ArrayItemProvider<Db.HuddleItem>(dbHuddles)}
             selection={undefined}
             onSelect={(_event, data) => onSelectHuddle(data.data)}
@@ -101,6 +102,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
                 (idx, huddle, details) => {
                     return <ListItem key={`list-item-${idx}`} index={idx} details={details}>
                         <Header
+                            className='full-width'
                             title={huddle.name}
                             titleSize={TitleSize.Small}
                             commandBarItems={[
