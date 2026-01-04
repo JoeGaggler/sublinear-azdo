@@ -13,9 +13,10 @@ import { SingleLayerMasterPanel } from "azure-devops-ui/MasterDetails";
 // import { SingleLayerMasterPanelHeader } from "azure-devops-ui/Components/SingleLayerMasterPanel/SingleLayerMasterPanel";
 import { ScrollableList, ListSelection, ListItem, type IListItemDetails, type IListRow } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
-import { Icon, IconSize } from 'azure-devops-ui/Icon';
+import { Icon, IconSize, type IIconProps } from 'azure-devops-ui/Icon';
 import { Pill, PillVariant } from "azure-devops-ui/Pill";
 import { PillGroup, PillGroupOverflow } from "azure-devops-ui/PillGroup";
+import { Card } from "azure-devops-ui/Card";
 
 interface HuddleGraph {
     debugWorkItems: Db.WorkItemSnapshot[]
@@ -368,17 +369,18 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return <Pill variant={PillVariant.themedStandard} iconProps={{ iconName: what.iconName }} >{what.text}</Pill>
     }
 
-    function renderIconForSlideType(item: HuddleSlide) {
-        let what: { iconName: string } = (() => {
-            switch (item.type) {
-                case "new": return { iconName: "AddTo" }
-                case "final": return { iconName: "Blocked2" }
-                case "update": return { iconName: "Edit" }
-                case "same": return { iconName: "CircleRing" }
-                default: return { iconName: "QuickNoteSolid" }
-            }
-        })();
+    function iconPropsForSlideType(type: string): IIconProps {
+        switch (type) {
+            case "new": return { iconName: "AddTo" }
+            case "final": return { iconName: "Blocked2" }
+            case "update": return { iconName: "Edit" }
+            case "same": return { iconName: "CircleRing" }
+            default: return { iconName: "QuickNoteSolid" }
+        }
+    }
 
+    function renderIconForSlideType(item: HuddleSlide) {
+        let what: IIconProps = (() => { return iconPropsForSlideType(item.type) })();
         return <Icon iconName={what.iconName} size={IconSize.medium} />
     }
 
@@ -428,26 +430,33 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             return <></>
         }
 
-        let s: string = `${slideIndex + 1}`
-        let a: string = `${slides.length}`
+        // let s: string = `${slideIndex + 1}`
+        // let a: string = `${slides.length}`
 
         return (
-            <div style={{ padding: "16px" }} className='flex-column full-width'>
-                Slide #{s} of {a}
-                <br />
-                {
-                    slide.fieldChanges.map(c => {
-                        return (
-                            <div className='flex-row full-width rhythm-horizontal-8'>
-                                <div>{c.what}</div>
-                                <Icon iconName={"CircleRing"} size={IconSize.small} />
-                                <div>{c.prev}</div>
-                                <Icon iconName={"ChevronRight"} size={IconSize.small} />
-                                <div>{c.next}</div>
-                            </div>
-                        )
-                    })
-                }
+            <div className='padding-left-8 full-width'>
+                <Card className='flex-self-start'>
+                    <div className='flex-column'>
+                        <Header
+                            titleIconProps={iconPropsForSlideType(slide.type)}
+                            title={slide.title}
+                            titleSize={TitleSize.Medium}
+                        />
+                        {
+                            slide.fieldChanges.map(c => {
+                                return (
+                                    <div className='flex-row rhythm-horizontal-8'>
+                                        <div>{c.what}</div>
+                                        <Icon iconName={"CircleRing"} size={IconSize.small} />
+                                        <div>{c.prev}</div>
+                                        <Icon iconName={"ChevronRight"} size={IconSize.small} />
+                                        <div>{c.next}</div>
+                                    </div>
+                                )
+                            })
+                        }
+                    </div>
+                </Card>
             </div>
         );
     }
