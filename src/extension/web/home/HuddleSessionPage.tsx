@@ -11,7 +11,7 @@ import { Header, TitleSize } from "azure-devops-ui/Header";
 // import { Button } from "azure-devops-ui/Button";
 import { SingleLayerMasterPanel } from "azure-devops-ui/MasterDetails";
 // import { SingleLayerMasterPanelHeader } from "azure-devops-ui/Components/SingleLayerMasterPanel/SingleLayerMasterPanel";
-import { ScrollableList, ListSelection, ListItem, type IListItemDetails } from "azure-devops-ui/List";
+import { ScrollableList, ListSelection, ListItem, type IListItemDetails, type IListRow } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { Icon, IconSize } from 'azure-devops-ui/Icon';
 import { Pill, PillVariant } from "azure-devops-ui/Pill";
@@ -39,6 +39,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     // let [huddleDoc, setHuddleDoc] = React.useState<Db.HuddleStoredDocument | null>(null)
     let [title, setTitle] = React.useState<string>("")
     let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
+    let [selectedSlide, setSelectedSlide] = React.useState<number | undefined>(undefined)
 
     React.useEffect(() => {
         const interval_id = setInterval(() => { poll(); }, 1000);
@@ -317,17 +318,27 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         console.log("HuddleSessionPage poll");
     }
 
+    function onSelectSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
+        setSelectedSlide(listRow.index)
+    }
+
     function renderSlideList() {
         let slides = graph?.slides;
         if (!slides) { return <></> }
 
         let tasks = new ArrayItemProvider(slides)
+
         let selection = new ListSelection(true)
+        if (selectedSlide !== undefined) {
+            selection.select(selectedSlide, 1, false, false)
+        }
+
         return (
             <ScrollableList
                 itemProvider={tasks}
                 renderRow={renderSlideListItem}
                 selection={selection}
+                onSelect={onSelectSlide}
                 width="100%"
             />
         )
@@ -404,8 +415,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderSlideContent() {
+        let s: string = (selectedSlide == undefined) ? "none" : `${selectedSlide + 1}`
+        let a: string = (graph == undefined || graph.slides.length < 1) ? "none" : `${graph.slides.length}`
+
         return (
             <div style={{ padding: "16px" }}>
+                Slide #{s} of {a}
+                <br />
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
                 incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
                 exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
