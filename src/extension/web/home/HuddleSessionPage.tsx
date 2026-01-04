@@ -195,6 +195,26 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return { what: "System.CommentCount", prev: s1, next: s2 }
     }
 
+    function getSomeFieldChange(what: string, prop: (wi: Db.WorkItemSnapshot) => any | undefined, wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+        let s1: string = ""
+        let s2: string = ""
+
+        if (prop(wi1)) {
+            s1 = `${prop(wi1)}`
+        } else {
+            s1 = "(not set)"
+        }
+
+        if (prop(wi2)) {
+            s2 = `${prop(wi2)}`
+
+        } else {
+            s2 = "(not set)"
+        }
+
+        return { what: what, prev: s1, next: s2 }
+    }
+
 
     async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
         let fieldChanges: HuddleSlideFieldChange[] = []
@@ -203,10 +223,15 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push({ what: "System.AreaPath", prev: wi1.areaPath || "", next: wi2.areaPath || "" }) }
         if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push({ what: "System.IterationPath", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" }) }
         if (wi1.description !== wi2.description) { fieldChanges.push({ what: "System.Description", prev: wi1.description || "", next: wi2.description || "" }) }
+        if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "System.WorkItemType", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
+        if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "System.Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
+        if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Common.BacklogPriority", w => w.backlogPriority, wi1, wi2)) }
+        if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Scheduling.StartDate", w => w.startDate, wi1, wi2)) }
+        if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Scheduling.TargetDate", w => w.targetDate, wi1, wi2)) }
         if (wi1.parent !== wi2.parent) { { fieldChanges.push(getParentFieldChange(wi1, wi2)) } }
         if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { { fieldChanges.push(getCommentFieldChange(wi1, wi2)) } }
 
-        // hasChanges = hasChanges || (wi1.priority !== wi2.priority) // TODO: priority should be based on position of snapshot in huddle session, not the raw value
+        // TODO: priority should be based on position of snapshot in huddle session, not the raw value
 
         if (fieldChanges.length > 0) {
             return ({
@@ -271,7 +296,12 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 iterationPath: wi2.fields?.['System.IterationPath'],
                 comments: Array.from({ length: commentCount }, (_v, k): Db.WorkItemSnapshotComment => { return { content: `TODO: Comment ${k}` } }),
                 parent: wi2.fields?.['System.Parent'],
-                description: wi2.fields?.['System.Description']
+                description: wi2.fields?.['System.Description'],
+                workItemType: wi2.fields?.['System.WorkItemType'],
+                tags: wi2.fields?.['System.Tags'],
+                backlogPriority: wi2.fields?.['Microsoft.VSTS.Common.BacklogPriority'],
+                startDate: wi2.fields?.['Microsoft.VSTS.Scheduling.StartDate'],
+                targetDate: wi2.fields?.['Microsoft.VSTS.Scheduling.TargetDate'],
             })
         }
 

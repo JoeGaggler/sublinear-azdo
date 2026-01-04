@@ -96,6 +96,11 @@ export interface WorkItemSnapshot {
     areaPath?: string
     iterationPath?: string
     description?: string
+    workItemType?: string
+    tags?: string
+    backlogPriority?: number
+    startDate?: string
+    targetDate?: string
     parent?: number
 
     // TODO

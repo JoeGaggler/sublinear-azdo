@@ -92,10 +92,16 @@ export interface WorkItemFields {
     "System.Description"?: string
     "System.IterationPath"?: string
     "Microsoft.VSTS.Common.Priority"?: number
+    "System.WorkItemType"?: string
+    "System.Tags"?: string // semi-colon delinated
+    "Microsoft.VSTS.Common.BacklogPriority"?: number
+    "Microsoft.VSTS.Scheduling.StartDate"?: string
+    "Microsoft.VSTS.Scheduling.TargetDate"?: string
 }
 
 export interface GetWorkItemResult {
     fields?: WorkItemFields
+    // TODO: links and relations
 }
 
 export async function getWorkItem(id: number, fields: string | null, asOf: number | null, session: Session): Promise<GetWorkItemResult> {
