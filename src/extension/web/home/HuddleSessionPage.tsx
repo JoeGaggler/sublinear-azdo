@@ -33,6 +33,7 @@ interface HuddleSlide {
     id: number
     title: string
     fieldChanges: HuddleSlideFieldChange[]
+    workItemType: string
 }
 
 interface HuddleSlideFieldChange {
@@ -46,6 +47,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     let [title, setTitle] = React.useState<string>("")
     let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
     let [selectedSlide, setSelectedSlide] = React.useState<number | undefined>(undefined)
+    const [availableWorkItemTypes, setAvailableWorkItemTypes] = React.useState<Azdo.WorkItemType[]>([])
 
     React.useEffect(() => {
         const interval_id = setInterval(() => { poll(); }, 1000);
@@ -62,6 +64,10 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         }
         setTitle(`${huddle?.name || ""} Session`)
         console.log("HuddleSessionPage: huddle", huddle);
+
+        Azdo.getWorkItemTypes(p.session).then(t => {
+            setAvailableWorkItemTypes(t.value)
+        })
 
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
         huddleSession.created = huddleSession.created || Util.msecNow()
@@ -158,7 +164,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             type: "new",
             id: wi2.id,
             title: wi2.title,
-            fieldChanges: []
+            fieldChanges: [],
+            workItemType: wi2.workItemType || "unknown", // TODO: filter out?
         })
     }
 
@@ -225,19 +232,20 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
         let fieldChanges: HuddleSlideFieldChange[] = []
-        if (wi1.title !== wi2.title) { fieldChanges.push({ what: "System.Title", prev: wi1.title, next: wi2.title }) }
-        if (wi1.state !== wi2.state) { fieldChanges.push({ what: "System.State", prev: wi1.state || "", next: wi2.state || "" }) }
-        if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push({ what: "System.AreaPath", prev: wi1.areaPath || "", next: wi2.areaPath || "" }) }
-        if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push({ what: "System.IterationPath", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" }) }
-        if (wi1.description !== wi2.description) { fieldChanges.push({ what: "System.Description", prev: wi1.description || "", next: wi2.description || "" }) }
-        if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "System.WorkItemType", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
-        if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "System.Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
-        if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Common.BacklogPriority", w => w.backlogPriority, wi1, wi2)) }
-        if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("System.Reason", w => w.reason, wi1, wi2)) }
-        if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Scheduling.StartDate", w => w.startDate, wi1, wi2)) }
-        if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Microsoft.VSTS.Scheduling.TargetDate", w => w.targetDate, wi1, wi2)) }
+        if (wi1.title !== wi2.title) { fieldChanges.push({ what: "Title", prev: wi1.title, next: wi2.title }) }
+        if (wi1.state !== wi2.state) { fieldChanges.push({ what: "State", prev: wi1.state || "", next: wi2.state || "" }) }
+        if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push({ what: "Area", prev: wi1.areaPath || "", next: wi2.areaPath || "" }) }
+        if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push({ what: "Iteration", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" }) }
+        if (wi1.description !== wi2.description) { fieldChanges.push({ what: "Description", prev: wi1.description || "", next: wi2.description || "" }) }
+        if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
+        if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
+        if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Backlog Priority", w => w.backlogPriority, wi1, wi2)) }
+        if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
+        if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", w => w.startDate, wi1, wi2)) }
+        if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", w => w.targetDate, wi1, wi2)) }
         if (wi1.parent !== wi2.parent) { { fieldChanges.push(getParentFieldChange(wi1, wi2)) } }
         if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { { fieldChanges.push(getCommentFieldChange(wi1, wi2)) } }
+        // TODO: work item type changes
 
         // TODO: priority should be based on position of snapshot in huddle session, not the raw value
 
@@ -246,14 +254,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 type: "update",
                 id: wi2.id,
                 title: wi2.title,
-                fieldChanges: fieldChanges
+                fieldChanges: fieldChanges,
+                workItemType: wi2.workItemType || "unknown",
             })
         } else {
             return ({
                 type: "same",
                 id: wi2.id,
                 title: wi2.title,
-                fieldChanges: []
+                fieldChanges: [],
+                workItemType: wi2.workItemType || "unknown",
             })
         }
     }
@@ -264,7 +274,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             type: "final",
             id: wi1.id,
             title: wi1.title,
-            fieldChanges: []
+            fieldChanges: [],
+            workItemType: wi1.workItemType || "unknown"
         })
     }
 
@@ -405,6 +416,18 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return <Icon iconName={what.iconName} size={IconSize.medium} />
     }
 
+    function renderIconForWorkItemType(item: HuddleSlide) {
+        let wit = item.workItemType || "unknown";
+        let wit2 = availableWorkItemTypes.findIndex(i => i.name === wit);
+        let wit3 = (wit2 === -1) ? undefined : availableWorkItemTypes[wit2].icon
+        if (wit3 && wit3.url) {
+            return <Icon render={() => {
+                return <img src={wit3.url} width={16} height={16} />
+            }} />
+        }
+        else { return <></> }
+    }
+
     function renderPillForFieldChange(fc: HuddleSlideFieldChange) {
         let what: string = (() => {
             switch (fc.what) {
@@ -429,6 +452,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     {renderIconForSlideType(item)}
                     <div className="flex-column h-scroll-hidden rhythm-vertical-4">
                         <div className="flex-row rhythm-horizontal-8">
+                            {renderIconForWorkItemType(item)}
                             <div className="wrap-text font-size-ms font-weight-semibold">{item.id}</div>
                             <div className="wrap-text font-size-ms secondary-text">{item.title}</div>
                         </div>
