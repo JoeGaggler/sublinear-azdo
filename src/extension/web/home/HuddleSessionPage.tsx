@@ -489,16 +489,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
                 <Card className='flex-self-start'>
-                    <div className='flex-column full-width flex-start'>
+                    <div className='flex-column full-width flex-start rhythm-vertical-4'>
                         {
                             slide.fieldChanges.map(c => {
                                 return (
-                                    <div className='flex-row flex-center rhythm-horizontal-8'>
+                                    <div className='flex-row flex-center rhythm-horizontal-4'>
                                         <div className=''>{renderPillForFieldChange(c)}</div>
 
                                         <div className='flex-row rhythm-horizontal-8'>
                                             <div>{c.prev}</div>
-                                            <div className='flex-self-center'><Icon iconName={"DoubleChevronRight"} size={IconSize.medium} /></div>
+                                            <div className='flex-self-center'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
                                             <div>{c.next}</div>
                                         </div>
                                     </div>

@@ -324,7 +324,7 @@ export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: num
     // query: "Select [System.Id], [System.Title], [System.State] From WorkItems Where [System.WorkItemType] <> 'FOO' AND [State] <> 'FOO' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc ASOF '2026-01-01T02:00:00Z'"
     let selectString = "SELECT [System.Id] FROM WorkItems"
     let asOfString = (asOf) ? `ASOF '${Util.msecToISO(asOf)}'` : ""
-    let orderString = "ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.CreatedDate] DESC"
+    let orderString = "ORDER BY [Microsoft.VSTS.Common.BacklogPriority] ASC, [System.CreatedDate] DESC, [System.Id] DESC"
     let whereString = `WHERE [System.TeamProject] = '${session.projectName}' AND [System.State] <> 'Done' AND [System.State] <> 'Removed'`
 
     if (query.workItemTypes) {
