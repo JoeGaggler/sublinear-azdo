@@ -293,7 +293,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             if (a.length == 0) {
                 continue
             }
-            
+
             let batch = await Azdo.getWorkItemBatch(a, null, asOf, session)
             console.log("BATCH", batch)
 
@@ -489,16 +489,18 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
                 <Card className='flex-self-start'>
-                    <div className='flex-column full-width'>
+                    <div className='flex-column full-width flex-start'>
                         {
                             slide.fieldChanges.map(c => {
                                 return (
-                                    <div className='flex-row rhythm-horizontal-8'>
-                                        <div>{c.what}</div>
-                                        <Icon iconName={"CircleRing"} size={IconSize.small} />
-                                        <div>{c.prev}</div>
-                                        <Icon iconName={"ChevronRight"} size={IconSize.small} />
-                                        <div>{c.next}</div>
+                                    <div className='flex-row flex-center rhythm-horizontal-8'>
+                                        <div className=''>{renderPillForFieldChange(c)}</div>
+
+                                        <div className='flex-row rhythm-horizontal-8'>
+                                            <div>{c.prev}</div>
+                                            <div className='flex-self-center'><Icon iconName={"DoubleChevronRight"} size={IconSize.medium} /></div>
+                                            <div>{c.next}</div>
+                                        </div>
                                     </div>
                                 )
                             })

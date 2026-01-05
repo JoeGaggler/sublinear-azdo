@@ -39,7 +39,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
         p.appNav.navTo({
             view: "huddle",
             data: target.id,
-            title: `Huddle - ${target.name}`,
+            title: `${target.name} - Huddle`,
             back: p.appNav.current,
         })
     }
