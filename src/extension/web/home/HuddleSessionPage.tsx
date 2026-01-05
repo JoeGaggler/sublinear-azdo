@@ -481,7 +481,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         // let a: string = `${slides.length}`
 
         return (
-            <div className='padding-left-8 full-width'>
+            <div className='padding-left-8 full-width sticky-top-0'>
                 <Header
                     titleIconProps={iconPropsForSlideType(slide.type)}
                     title={slide.title}
@@ -524,14 +524,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     // const [selectedItemObservable] = React.useState(new ObservableValue<string>(sampleDate[0]));
 
     return (
-        <Page>
+        <Page className='full-height'>
             <Header
                 title={title}
                 titleSize={TitleSize.Large}
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
             />
             <div className="page-content page-content-top">
-                <div className="flex-row">
+                <div className="flex-row flex-start">
                     <SingleLayerMasterPanel
                         className="master-example-panel show-on-small-screens"
                         // renderHeader={renderHeader}
