@@ -111,8 +111,13 @@ export interface WorkItemType {
     referenceName?: string
     description?: string
     color?: string
-    icon?: string
+    icon?: WorkItemTypeIcon
     isDisabled?: boolean
+}
+
+export interface WorkItemTypeIcon {
+    id?: string
+    url?: string
 }
 
 export async function getWorkItemTypes(session: Session): Promise<AzdoResult<WorkItemType>> {

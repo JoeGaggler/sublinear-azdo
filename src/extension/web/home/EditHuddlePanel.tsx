@@ -16,7 +16,7 @@ import type { IListBoxItem } from 'azure-devops-ui/ListBox';
 export function EditHuddlePanel(p: EditHuddlePanelProps) {
     const [name, setName] = useState(p.huddle.name)
     const [areaPath, setAreaPath] = useState(p.huddle.workItemQuery?.areaPath || "")
-    const [availableWorkItemTypes, setAvailableWorkItemTypes] = useState<string[]>([])
+    const [availableWorkItemTypes, setAvailableWorkItemTypes] = useState<Azdo.WorkItemType[]>([])
     const [selectedWorkItemTypes, setSelectedWorkItemTypes] = useState<string[]>(p.huddle.workItemQuery?.workItemTypes || [])
     const [subAreasChecked, setSubAreasChecked] = useState(p.huddle.workItemQuery?.includeSubAreas || false)
     const witSelectionRef = React.useRef<DropdownMultiSelection>(new DropdownMultiSelection())
@@ -27,10 +27,9 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
         let types = await Azdo.getWorkItemTypes(p.session)
 
         let typeNames = types.value
-            .map(t => t.name)
-            .filter((name): name is string => name !== undefined)
+            .filter((wit): wit is Azdo.WorkItemType => wit !== undefined && wit.name !== undefined)
 
-        console.log("Type Names: ", typeNames)
+        typeNames.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
 
         if (typeNames) {
             setAvailableWorkItemTypes(typeNames)
@@ -54,21 +53,30 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
         await p.onCancel();
     }
 
-    let witItems = availableWorkItemTypes.map((wit): IListBoxItem => {
-        return {
-            id: wit,
-            text: wit,
-            iconProps: {
-                iconName: "CircleRing"
-            }
+    let witItems = availableWorkItemTypes.map((wit): IListBoxItem<Azdo.WorkItemType> => {
+        let ret: IListBoxItem<Azdo.WorkItemType> = {
+            id: wit.name!, // TODO: remove force-unwrap
+            text: wit.name!, // TODO: remove force-unwrap
         } // type:ListBoxItemType.Header, groupId:"blah", iconProps, enforceSingleSelect
+
+        let iconUrl = wit.icon?.url
+        if (iconUrl) {
+            console.log("ICON", wit.icon)
+            ret.iconProps = {
+                render: () => {
+                    return <img src={iconUrl} width={16} height={16} className='padding-right-4' />
+                }
+            }
+        }
+
+        return ret
     })
 
     let witSelection = witSelectionRef.current
     console.log("PREVIOUS", witSelection.selectedCount)
     // witSelection.clear()
     for (let index = 0; index < selectedWorkItemTypes.length; index++) {
-        let index2 = availableWorkItemTypes.indexOf(selectedWorkItemTypes[index])
+        let index2 = availableWorkItemTypes.findIndex((v) => v.name === selectedWorkItemTypes[index])
         if (index2 !== -1) {
             console.log("RESELECT", index2)
             witSelection.select(index2, 1)
