@@ -9,6 +9,7 @@ import { Checkbox } from "azure-devops-ui/Checkbox";
 export function EditHuddlePanel(p: EditHuddlePanelProps) {
     const [name, setName] = useState(p.huddle.name)
     const [areaPath, setAreaPath] = useState(p.huddle.workItemQuery?.areaPath || "")
+    const [workItemTypes, setWorkItemTypes] = useState(p.huddle.workItemQuery?.workItemTypes || "")
     const [subAreasChecked, setSubAreasChecked] = useState(p.huddle.workItemQuery?.includeSubAreas || false)
 
     async function onCommit() {
@@ -16,6 +17,7 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
             name: name,
             areaPath: areaPath,
             includeSubAreas: subAreasChecked,
+            workItemTypes: workItemTypes,
         }
         await p.onCommit(data);
     }
@@ -64,6 +66,13 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
                     checked={subAreasChecked}
                     label="Include sub-areas"
                 />
+
+                <TextField
+                    label={"Work Item Types"}
+                    value={workItemTypes}
+                    onChange={(e, nextValue) => e && setWorkItemTypes(nextValue)}
+                    width={TextFieldWidth.standard}
+                />
             </div>
         </Panel>
     )
@@ -73,6 +82,7 @@ export interface EditHuddlePanelValues {
     name: string
     areaPath: string
     includeSubAreas: boolean
+    workItemTypes: string
 }
 
 export interface EditHuddlePanelProps {

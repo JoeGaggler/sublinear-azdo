@@ -64,6 +64,7 @@ export interface HuddleWorkItemQuery {
     areaPath: string
     asOf?: number
     includeSubAreas?: boolean
+    workItemTypes?: string
 }
 
 export interface HuddleSessionListStoredDocument extends StoredDocument {
@@ -318,13 +319,18 @@ export async function upsertHuddleSession(data: HuddleSessionStoredDocument, ses
 
 export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: number | null, session: Azdo.Session): Promise<Azdo.QueryWorkItemsResult> {
     // POST https://dev.azure.com/{organization}/{project}/{team}/_apis/wit/wiql?timePrecision={timePrecision}&$top={$top}&api-version=7.2-preview.2
-    let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=101&api-version=7.2-preview.2`
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/${session.team}/_apis/wit/wiql?timePrecision=false&$top=1000&api-version=7.2-preview.2`
 
     // query: "Select [System.Id], [System.Title], [System.State] From WorkItems Where [System.WorkItemType] <> 'FOO' AND [State] <> 'FOO' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc ASOF '2026-01-01T02:00:00Z'"
     let selectString = "SELECT [System.Id] FROM WorkItems"
     let asOfString = (asOf) ? `ASOF '${Util.msecToISO(asOf)}'` : ""
     let orderString = "ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.CreatedDate] DESC"
-    let whereString = `WHERE [System.TeamProject] = '${session.projectName}'`
+    let whereString = `WHERE [System.TeamProject] = '${session.projectName}' AND [System.State] <> 'Done' AND [System.State] <> 'Removed'`
+
+    if (query.workItemTypes) {
+        let workItemTypeString = query.workItemTypes // ` 'Product Backlog Item', 'Initiative', 'Feature', 'Epic', 'Issue', 'Task' `
+        whereString += ` AND [System.WorkItemType] IN (${workItemTypeString})`
+    }
 
     if (query.areaPath) {
         let op = "="

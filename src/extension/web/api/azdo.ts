@@ -101,6 +101,7 @@ export interface WorkItemFields {
 }
 
 export interface GetWorkItemResult {
+    id?: number
     fields?: WorkItemFields
     // TODO: links and relations
 }
@@ -113,6 +114,25 @@ export async function getWorkItem(id: number, fields: string | null, asOf: numbe
     let response = await restGet(url, session.bearerToken) as GetWorkItemResult
     console.log("queryWorkItems:", response)
     return response as GetWorkItemResult
+}
+
+export async function getWorkItemBatch(ids: number[], fields: string[] | null, asOf: number | null, session: Session): Promise<AzdoResult<GetWorkItemResult>> {
+    if (!ids || ids.length < 1) {
+        console.error("NO ITEMS FOR BATCH")
+        return { count: 0, value: [] }
+    }
+    let req: any = {
+        ids: ids,
+        "$expand": "all",
+    }
+    if (fields) { req.fields = fields }
+    if (asOf) { req.asOf = `${Util.msecToISO(asOf)}` }
+
+    // POST https://dev.azure.com/{organization}/{project}/_apis/wit/workitemsbatch?api-version=7.2-preview.1
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workitemsbatch?api-version=7.2-preview.1`
+    let response = await restPost(url, req, session.bearerToken) as AzdoResult<GetWorkItemResult>
+    console.log("getWorkItemBatch:", response)
+    return response
 }
 
 export interface GetWorkItemCommentsResult {

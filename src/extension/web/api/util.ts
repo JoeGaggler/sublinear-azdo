@@ -43,3 +43,28 @@ export function makeHeaderBackButtonProps(appNav: AppNav): IButtonProps | undefi
         },
     };
 }
+
+export interface Span {
+    start: number
+    length: number
+}
+
+export function chunk<T>(array: T[], size: number): Span[] {
+    let spans: Span[] = []
+    if (!array || array.length < 1) { return spans }
+
+    let front = 0;
+    while (true) {
+        if (front == array.length) { break; }
+        let end = front + size
+        if (end > array.length) {
+            end = array.length - front;
+        }
+        spans.push({
+            start: front,
+            length: end - front
+        })
+        front = end
+    }
+    return spans
+}

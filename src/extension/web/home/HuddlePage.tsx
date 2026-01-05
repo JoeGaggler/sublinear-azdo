@@ -62,6 +62,7 @@ function HuddlePage(p: HuddlePageProps) {
             nextHuddle.workItemQuery = {
                 areaPath: data.areaPath,
                 includeSubAreas: data.includeSubAreas,
+                workItemTypes: data.workItemTypes,
             }
 
             let upsertResult = await Db.upsertHuddle(nextHuddle, p.session)

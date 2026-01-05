@@ -282,36 +282,52 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         }
 
         let items: Db.WorkItemSnapshot[] = []
-        for (const wi of workItemsResult.workItems) {
-            let wid = wi.id
-            if (!wid) { continue; } // TODO: error
-            let wi2 = await Azdo.getWorkItem(wid, null, asOf, p.session)
-            console.log("getSnapshot: work item", wid, wi2)
 
-            let commentCount = wi2.fields?.['System.CommentCount'] ?? 0;
-            if (commentCount > 0) {
-                // TODO: fetch full comment details
-                let wicomments = await Azdo.getWorkItemComments(wid, p.session)
-                commentCount = wicomments?.count || commentCount
+        let chunks = Util.chunk(workItemsResult.workItems, 200)
+        console.log("CHUNK", chunks)
+        for (let chunk of chunks) {
+            let span = workItemsResult.workItems.slice(chunk.start, chunk.start + chunk.length)
+            let a: number[] = span
+                .map(i => i.id)
+                .filter((id): id is number => id !== undefined);
+            if (a.length == 0) {
+                continue
             }
+            
+            let batch = await Azdo.getWorkItemBatch(a, null, asOf, session)
+            console.log("BATCH", batch)
 
-            items.push({
-                id: wid,
-                title: wi2.fields?.['System.Title'] || "",
-                priority: wi2.fields?.['Microsoft.VSTS.Common.Priority'] || Number.MAX_SAFE_INTEGER,
-                state: wi2.fields?.['System.State'],
-                areaPath: wi2.fields?.['System.AreaPath'],
-                iterationPath: wi2.fields?.['System.IterationPath'],
-                comments: Array.from({ length: commentCount }, (_v, k): Db.WorkItemSnapshotComment => { return { content: `TODO: Comment ${k}` } }),
-                parent: wi2.fields?.['System.Parent'],
-                description: wi2.fields?.['System.Description'],
-                workItemType: wi2.fields?.['System.WorkItemType'],
-                tags: wi2.fields?.['System.Tags'],
-                backlogPriority: wi2.fields?.['Microsoft.VSTS.Common.BacklogPriority'],
-                startDate: wi2.fields?.['Microsoft.VSTS.Scheduling.StartDate'],
-                targetDate: wi2.fields?.['Microsoft.VSTS.Scheduling.TargetDate'],
-                reason: wi2.fields?.['System.Reason'],
-            })
+            for (const wi of batch.value) {
+                let wid = wi.id
+                if (!wid) { continue; } // TODO: error
+                // let wi2 = await Azdo.getWorkItem(wid, null, asOf, p.session)
+                console.log("getSnapshot: work item", wid, wi)
+
+                let commentCount = wi.fields?.['System.CommentCount'] ?? 0;
+                // if (commentCount > 0) {
+                //     // TODO: fetch full comment details
+                //     let wicomments = await Azdo.getWorkItemComments(wid, p.session)
+                //     commentCount = wicomments?.count || commentCount
+                // }
+
+                items.push({
+                    id: wid,
+                    title: wi.fields?.['System.Title'] || "",
+                    priority: wi.fields?.['Microsoft.VSTS.Common.Priority'] || Number.MAX_SAFE_INTEGER,
+                    state: wi.fields?.['System.State'],
+                    areaPath: wi.fields?.['System.AreaPath'],
+                    iterationPath: wi.fields?.['System.IterationPath'],
+                    comments: Array.from({ length: commentCount }, (_v, k): Db.WorkItemSnapshotComment => { return { content: `TODO: Comment ${k}` } }),
+                    parent: wi.fields?.['System.Parent'],
+                    description: wi.fields?.['System.Description'],
+                    workItemType: wi.fields?.['System.WorkItemType'],
+                    tags: wi.fields?.['System.Tags'],
+                    backlogPriority: wi.fields?.['Microsoft.VSTS.Common.BacklogPriority'],
+                    startDate: wi.fields?.['Microsoft.VSTS.Scheduling.StartDate'],
+                    targetDate: wi.fields?.['Microsoft.VSTS.Scheduling.TargetDate'],
+                    reason: wi.fields?.['System.Reason'],
+                })
+            }
         }
 
         // TODO: produce snapshot
@@ -427,7 +443,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         const navSvc = await SDK.getService<IWorkItemFormNavigationService>(
             "ms.vss-work-web.work-item-form-navigation-service"
         );
-        
+
         await navSvc.openWorkItem(wid, true)
     };
 
