@@ -106,6 +106,22 @@ export interface GetWorkItemResult {
     // TODO: links and relations
 }
 
+export interface WorkItemType {
+    name?: string
+    referenceName?: string
+    description?: string
+    color?: string
+    icon?: string
+    isDisabled?: boolean
+}
+
+export async function getWorkItemTypes(session: Session): Promise<AzdoResult<WorkItemType>> {
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workitemtypes?api-version=7.2-preview.2`
+    let response = await restGet(url, session.bearerToken) as AzdoResult<WorkItemType>
+    console.log("getWorkItemTypes:", response)
+    return response
+}
+
 export async function getWorkItem(id: number, fields: string | null, asOf: number | null, session: Session): Promise<GetWorkItemResult> {
     let fieldsQueryParam = fields ? `&$fields=${fields}` : ""
     let asOfQueryParam = asOf ? `&asOf=${Util.msecToISO(asOf)}` : ""

@@ -64,7 +64,7 @@ export interface HuddleWorkItemQuery {
     areaPath: string
     asOf?: number
     includeSubAreas?: boolean
-    workItemTypes?: string
+    workItemTypes?: string[]
 }
 
 export interface HuddleSessionListStoredDocument extends StoredDocument {
@@ -328,7 +328,7 @@ export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: num
     let whereString = `WHERE [System.TeamProject] = '${session.projectName}' AND [System.State] <> 'Done' AND [System.State] <> 'Removed'`
 
     if (query.workItemTypes) {
-        let workItemTypeString = query.workItemTypes // ` 'Product Backlog Item', 'Initiative', 'Feature', 'Epic', 'Issue', 'Task' `
+        let workItemTypeString = query.workItemTypes.map(w => `'${w}'`) .join(',') // ` 'Product Backlog Item', 'Initiative', 'Feature', 'Epic', 'Issue', 'Task' `
         whereString += ` AND [System.WorkItemType] IN (${workItemTypeString})`
     }
 

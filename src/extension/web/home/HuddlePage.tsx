@@ -267,6 +267,7 @@ function HuddlePage(p: HuddlePageProps) {
                             huddle={huddle}
                             onCommit={onCommitEditHuddle}
                             onCancel={onCancelEditHuddle}
+                            session={p.session}
                         />
                     )
                 }
