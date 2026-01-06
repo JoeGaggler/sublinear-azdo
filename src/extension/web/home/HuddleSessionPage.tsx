@@ -449,12 +449,12 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return <Icon iconName={what.iconName} size={IconSize.medium} />
     }
 
-    function renderWorkItemHeader(item: HuddleSlide): JSX.Element {
+    function renderWorkItemHeader(item: HuddleSlide, className: string = ""): JSX.Element {
         return (
-            <div className="flex-row rhythm-horizontal-8">
+            <div className={`flex-row rhythm-horizontal-8 ${className}`}>
                 {renderIconForWorkItemType(item)}
-                <div className="wrap-text font-size-ms font-weight-semibold">{item.id}</div>
-                <div className="wrap-text font-size-ms secondary-text">{item.title}</div>
+                <div className="wrap-text font-weight-semibold">{item.id}</div>
+                <div className="wrap-text secondary-text">{item.title}</div>
             </div>
         )
     }
@@ -502,7 +502,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 <div className="list-example-row flex-row h-scroll-hidden padding-8 rhythm-horizontal-8">
                     {renderIconForSlideType(item)}
                     <div className="flex-column h-scroll-hidden rhythm-vertical-4">
-                        {renderWorkItemHeader(item)}
+                        {renderWorkItemHeader(item, "font-size-ms")}
                         {renderPillGroup(item)}
                     </div>
                 </div>
@@ -555,7 +555,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             <div className='padding-left-8 full-width sticky-top-0'>
                 <Header
                     titleIconProps={iconPropsForSlideType(slide.type)}
-                    title={renderWorkItemHeader(slide)}
+                    title={renderWorkItemHeader(slide, "font-size-ml")}
                     titleSize={TitleSize.Medium}
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
