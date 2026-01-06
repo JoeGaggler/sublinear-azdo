@@ -449,6 +449,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return <Icon iconName={what.iconName} size={IconSize.medium} />
     }
 
+    function renderWorkItemHeader(item: HuddleSlide): JSX.Element {
+        return (
+            <div className="flex-row rhythm-horizontal-8">
+                {renderIconForWorkItemType(item)}
+                <div className="wrap-text font-size-ms font-weight-semibold">{item.id}</div>
+                <div className="wrap-text font-size-ms secondary-text">{item.title}</div>
+            </div>
+        )
+    }
+
     function renderIconForWorkItemType(item: HuddleSlide) {
         let wit = item.workItemType || "unknown";
         let wit2 = availableWorkItemTypes.findIndex(i => i.name === wit);
@@ -492,11 +502,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 <div className="list-example-row flex-row h-scroll-hidden padding-8 rhythm-horizontal-8">
                     {renderIconForSlideType(item)}
                     <div className="flex-column h-scroll-hidden rhythm-vertical-4">
-                        <div className="flex-row rhythm-horizontal-8">
-                            {renderIconForWorkItemType(item)}
-                            <div className="wrap-text font-size-ms font-weight-semibold">{item.id}</div>
-                            <div className="wrap-text font-size-ms secondary-text">{item.title}</div>
-                        </div>
+                        {renderWorkItemHeader(item)}
                         {renderPillGroup(item)}
                     </div>
                 </div>
@@ -549,7 +555,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             <div className='padding-left-8 full-width sticky-top-0'>
                 <Header
                     titleIconProps={iconPropsForSlideType(slide.type)}
-                    title={slide.title}
+                    title={renderWorkItemHeader(slide)}
                     titleSize={TitleSize.Medium}
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
