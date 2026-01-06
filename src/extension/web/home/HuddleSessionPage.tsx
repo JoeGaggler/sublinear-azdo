@@ -41,6 +41,7 @@ interface HuddleSlide {
 interface HuddleSlidePill {
     text: string
     color?: IColor
+    message?: string
 }
 
 interface HuddleSlideFieldChange {
@@ -249,7 +250,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                             red: 0xcc,
                             green: 0,
                             blue: 0,
-                        }
+                        },
+                        message: `Target date was ${Util.msecToDate(targetDateMsec).toLocaleDateString()}`
                     })
                 }
             }
@@ -462,10 +464,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function renderPillListItem(p: HuddleSlidePill) {
         if (p.color) {
             return <Pill variant={PillVariant.themedStandard} color={p.color}>{p.text}</Pill>
-
         } else {
             return <Pill variant={PillVariant.themedStandard}>{p.text}</Pill>
-
         }
     }
 
@@ -555,6 +555,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 />
                 <Card className='flex-self-start'>
                     <div className='flex-column full-width flex-start rhythm-vertical-4'>
+                        {
+                            slide.pills.map(p => {
+                                return (
+                                    <div className='flex-row flex-center rhythm-horizontal-4'>
+                                        <div className=''>{renderPillListItem(p)}</div>
+                                        <div className=''>{p.message || ""}</div>
+                                    </div>
+                                )
+                            })
+                        }
                         {
                             slide.fieldChanges.map(c => {
                                 return (
