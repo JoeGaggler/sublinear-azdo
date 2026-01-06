@@ -71,14 +71,15 @@ export function chunk<T>(array: T[], size: number): Span[] {
     return spans
 }
 
-export function useInterval(callback: Function, delay: number) {
+export function useInterval(callback: Function, delay: number, on: boolean = true) {
     const savedCallback = React.useRef<Function>(callback)
 
     React.useEffect(() => { savedCallback.current = callback }, [callback])
 
     React.useEffect(() => {
+        if (!on) { return; }
         function tick() { savedCallback.current() }
         let id = setInterval(tick, delay);
         return () => clearInterval(id);
-    }, [delay])
+    }, [on, delay])
 }

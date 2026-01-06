@@ -156,6 +156,24 @@ export async function getWorkItemBatch(ids: number[], fields: string[] | null, a
     return response
 }
 
+export async function getWorkItemBatchWithChunks(ids: number[], fields: string[] | null, asOf: number | null, session: Session): Promise<GetWorkItemResult[]> {
+    let result: GetWorkItemResult[] = []
+
+    let chunks = Util.chunk(ids, 200)
+    for (let chunk of chunks) {
+        let span = ids.slice(chunk.start, chunk.start + chunk.length)
+        let a: number[] = span.filter((id): id is number => id !== undefined);
+        if (a.length == 0) {
+            continue
+        }
+        let batch = await getWorkItemBatch(a, fields, asOf, session)
+        result.push(...batch.value)
+    }
+
+    return result;
+}
+
+
 export interface GetWorkItemCommentsResult {
     count: number
     comments: GetWorkItemCommentsResultItem[]

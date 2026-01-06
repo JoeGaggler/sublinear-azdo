@@ -185,11 +185,10 @@ function createFinalSlide(wi1: Db.WorkItemSnapshot, created?: number): HuddleSli
 
 function createPillsList(wi: Db.WorkItemSnapshot, created?: number): HuddleSlidePill[] {
     let pills: HuddleSlidePill[] = []
-    if (wi.targetDate) {
+    if (wi.targetDate && created) {
         let targetDateMsec = Util.msecFromISO(wi.targetDate)
         if (targetDateMsec) {
-            console.log("TARGET DATE", targetDateMsec, created)
-            if ((created || 0) >= targetDateMsec) {
+            if (created >= targetDateMsec) {
                 pills.push({
                     text: "Overdue",
                     color: {
@@ -366,25 +365,22 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         let items: Db.WorkItemSnapshot[] = []
 
-        let chunks = Util.chunk(workItemsResult.workItems, 200)
-        console.log("CHUNK", chunks)
-        for (let chunk of chunks) {
-            let span = workItemsResult.workItems.slice(chunk.start, chunk.start + chunk.length)
-            let a: number[] = span
-                .map(i => i.id)
-                .filter((id): id is number => id !== undefined);
-            if (a.length == 0) {
-                continue
-            }
+        let batchIds: number[] = workItemsResult.workItems
+            .map(i => i.id)
+            .filter((id): id is number => id !== undefined)
 
-            let batch = await Azdo.getWorkItemBatch(a, null, asOf, session)
-            console.log("BATCH", batch)
+        let level = 0
+        while (batchIds.length > 0) {
+            level = level + 1
+            let currentBatchIds = batchIds
+            batchIds = []
+            let batch = await Azdo.getWorkItemBatchWithChunks(currentBatchIds, null, asOf, session)
+            console.log("getSnapshot batch", level, batch.length, batch)
 
-            for (const wi of batch.value) {
+            for (const wi of batch) {
                 let wid = wi.id
                 if (!wid) { continue; } // TODO: error
                 // let wi2 = await Azdo.getWorkItem(wid, null, asOf, p.session)
-                console.log("getSnapshot: work item", wid, wi)
 
                 let commentCount = wi.fields?.['System.CommentCount'] ?? 0;
                 // if (commentCount > 0) {
@@ -392,6 +388,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 //     let wicomments = await Azdo.getWorkItemComments(wid, p.session)
                 //     commentCount = wicomments?.count || commentCount
                 // }
+
+                let parentId = wi.fields?.['System.Parent']
+                if (parentId) {
+                    batchIds.push(parentId)
+                }
 
                 items.push({
                     id: wid,
