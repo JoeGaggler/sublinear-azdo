@@ -55,7 +55,9 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     let [title, setTitle] = React.useState<string>("")
     let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
     let [selectedSlide, setSelectedSlide] = React.useState<number | undefined>(undefined)
+    let [createdMsec, setCreatedMsec] = React.useState<number>(0)
     const [availableWorkItemTypes, setAvailableWorkItemTypes] = React.useState<Azdo.WorkItemType[]>([])
+
 
     React.useEffect(() => {
         const interval_id = setInterval(() => { poll(); }, 1000);
@@ -70,7 +72,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             console.error("HuddleSessionPage: missing huddle");
             return
         }
-        setTitle(`${huddle?.name || ""} Session`)
+
         console.log("HuddleSessionPage: huddle", huddle);
 
         Azdo.getWorkItemTypes(p.session).then(t => {
@@ -78,8 +80,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         })
 
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
-        huddleSession.created = huddleSession.created || Util.msecNow()
+        let created = huddleSession.created || Util.msecNow()
+        huddleSession.created = created
         console.log("HuddleSessionPage: huddle session", huddleSession);
+        setCreatedMsec(created)
+        setTitle(`${huddle?.name || ""} Session - ${Util.msecToDate(created).toLocaleDateString()}`)
 
         let snapShot2 = huddleSession.snapshot
 
@@ -243,7 +248,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         if (wi.targetDate) {
             let targetDateMsec = Util.msecFromISO(wi.targetDate)
             if (targetDateMsec) {
-                if (Util.msecNow() >= targetDateMsec) {
+                if (createdMsec >= targetDateMsec) {
                     pills.push({
                         text: "Overdue",
                         color: {

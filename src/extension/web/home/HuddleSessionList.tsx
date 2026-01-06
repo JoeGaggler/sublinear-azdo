@@ -20,6 +20,15 @@ function HuddleSessionList(p: HuddleSessionListProps) {
         p.onDelete?.(item);
     }
 
+    function renderHeaderTitle(session: Db.HuddleSessionListItem): JSX.Element {
+        return (
+            <div className='flex-row rhythm-horizontal-8 title-xs'>
+                <div>{Util.msecToDate(session.created).toLocaleDateString()}</div>
+                <div className='flex-row'>(<Ago date={Util.msecToDate(session.created)} format={AgoFormat.Compact} />)</div>
+            </div>
+        )
+    }
+
     return (
         <ScrollableList
             className='full-width'
@@ -32,7 +41,7 @@ function HuddleSessionList(p: HuddleSessionListProps) {
                 (idx, session, details) => {
                     return <ListItem key={`list-item-${idx}`} index={idx} details={details}>
                         <Header className='full-width'
-                            title={<Ago date={Util.msecToDate(session.created)} format={AgoFormat.Compact} />}
+                            title={renderHeaderTitle(session)}
                             titleSize={TitleSize.Small}
                             titleIconProps={{
                                 iconName: "ProFootball",
