@@ -21,6 +21,7 @@ import { PillGroup, PillGroupOverflow } from "azure-devops-ui/PillGroup";
 import { Card } from "azure-devops-ui/Card";
 import type { IHeaderCommandBarItem } from 'azure-devops-ui/HeaderCommandBar';
 import { type IWorkItemFormNavigationService } from "azure-devops-extension-api/WorkItemTracking";
+import type { IColor } from 'azure-devops-extension-api';
 
 
 interface HuddleGraph {
@@ -34,6 +35,12 @@ interface HuddleSlide {
     title: string
     fieldChanges: HuddleSlideFieldChange[]
     workItemType: string
+    pills: HuddleSlidePill[]
+}
+
+interface HuddleSlidePill {
+    text: string
+    color?: IColor
 }
 
 interface HuddleSlideFieldChange {
@@ -166,6 +173,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             title: wi2.title,
             fieldChanges: [],
             workItemType: wi2.workItemType || "unknown", // TODO: filter out?
+            pills: createPillsList(wi2),
         })
     }
 
@@ -229,6 +237,25 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return { what: what, prev: s1, next: s2 }
     }
 
+    function createPillsList(wi: Db.WorkItemSnapshot): HuddleSlidePill[] {
+        let pills: HuddleSlidePill[] = []
+        if (wi.targetDate) {
+            let targetDateMsec = Util.msecFromISO(wi.targetDate)
+            if (targetDateMsec) {
+                if (Util.msecNow() >= targetDateMsec) {
+                    pills.push({
+                        text: "Overdue",
+                        color: {
+                            red: 0xcc,
+                            green: 0,
+                            blue: 0,
+                        }
+                    })
+                }
+            }
+        }
+        return pills;
+    }
 
     async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
         let fieldChanges: HuddleSlideFieldChange[] = []
@@ -256,6 +283,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 title: wi2.title,
                 fieldChanges: fieldChanges,
                 workItemType: wi2.workItemType || "unknown",
+                pills: createPillsList(wi2),
             })
         } else {
             return ({
@@ -264,6 +292,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 title: wi2.title,
                 fieldChanges: [],
                 workItemType: wi2.workItemType || "unknown",
+                pills: createPillsList(wi2)
             })
         }
     }
@@ -275,7 +304,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             id: wi1.id,
             title: wi1.title,
             fieldChanges: [],
-            workItemType: wi1.workItemType || "unknown"
+            workItemType: wi1.workItemType || "unknown",
+            pills: createPillsList(wi1)
         })
     }
 
@@ -382,6 +412,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function renderPillGroup(item: HuddleSlide) {
         return <PillGroup className="flex-row" overflow={PillGroupOverflow.wrap}>
             {renderPillForSlideType(item)}
+            {(item.pills) && (item.pills.map(p => renderPillListItem(p)))}
             {(item.fieldChanges) && (item.fieldChanges.map(fc => renderPillForFieldChange(fc)))}
         </PillGroup>
     }
@@ -426,6 +457,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             }} />
         }
         else { return <></> }
+    }
+
+    function renderPillListItem(p: HuddleSlidePill) {
+        if (p.color) {
+            return <Pill variant={PillVariant.themedStandard} color={p.color}>{p.text}</Pill>
+
+        } else {
+            return <Pill variant={PillVariant.themedStandard}>{p.text}</Pill>
+
+        }
     }
 
     function renderPillForFieldChange(fc: HuddleSlideFieldChange) {

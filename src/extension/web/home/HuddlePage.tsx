@@ -125,7 +125,7 @@ function HuddlePage(p: HuddlePageProps) {
 
         onSelectHuddleSession(newSession)
         let previousId = getPriorHuddleSessionItem(savedSessions, newSession.id)
-        onOpenHuddleSession(huddle.id, newSession.id, previousId)
+        onOpenHuddleSession(huddle, newSession.id, previousId)
     }
 
     function getHeaderCommandBarItems(): IHeaderCommandBarItem[] {
@@ -193,7 +193,7 @@ function HuddlePage(p: HuddlePageProps) {
         setHuddleSessions(huddleSessions)
 
         let previousId = getPriorHuddleSessionItem(huddleSessions, newSession.id)
-        await onOpenHuddleSession(huddle.id, newSession.id, previousId)
+        await onOpenHuddleSession(huddle, newSession.id, previousId)
     }
 
     async function onDeleteHuddleSession(item: Db.HuddleSessionListItem) {
@@ -225,16 +225,16 @@ function HuddlePage(p: HuddlePageProps) {
         setHuddleSessions(saved)
     }
 
-    async function onOpenHuddleSession(huddleId: String, huddleSessionId: String, previousHuddleSessionId?: string) {
+    async function onOpenHuddleSession(huddleDoc: Db.HuddleStoredDocument, huddleSessionId: String, previousHuddleSessionId?: string) {
         p.appNav.navTo({
             view: "huddle_session",
             data: {
-                huddleId: huddleId,
+                huddleId: huddleDoc.id,
                 huddleSessionId: huddleSessionId,
                 previousHuddleSessionId: previousHuddleSessionId
             },
             back: p.appNav.current,
-            title: `huddle_session: ${huddleSessionId}`
+            title: `${huddleDoc.name} - Huddle Session` // TODO: append date
         });
     }
 
