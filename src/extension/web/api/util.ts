@@ -1,5 +1,7 @@
 import { type IButtonProps } from "azure-devops-ui/Button";
 import type { AppNav } from "../home/app";
+import React from 'react'
+
 
 export function uuid(prefix: string): string {
     let tail = self.crypto.randomUUID();
@@ -67,4 +69,16 @@ export function chunk<T>(array: T[], size: number): Span[] {
         front = end
     }
     return spans
+}
+
+export function useInterval(callback: Function, delay: number) {
+    const savedCallback = React.useRef<Function>(callback)
+
+    React.useEffect(() => { savedCallback.current = callback }, [callback])
+
+    React.useEffect(() => {
+        function tick() { savedCallback.current() }
+        let id = setInterval(tick, delay);
+        return () => clearInterval(id);
+    }, [delay])
 }

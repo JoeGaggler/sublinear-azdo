@@ -50,19 +50,232 @@ interface HuddleSlideFieldChange {
     next: string
 }
 
+interface ReducerState {
+    title: string,
+    created?: number
+    availableWorkItemTypes: Azdo.WorkItemType[]
+    selectedSlide: number | null,
+    huddleGraph?: HuddleGraph
+}
+
+interface ReducerAction {
+    title?: string
+    created?: number
+    availableWorkItemTypes?: Azdo.WorkItemType[]
+    selectedSlide?: number | null
+    snapShot1?: Db.HuddleSessionSnapshot
+    snapShot2?: Db.HuddleSessionSnapshot
+}
+
+function reducer(state: ReducerState, action: ReducerAction): ReducerState {
+    let next = {
+        ...state
+    }
+
+    if (action.title !== undefined) { next.title = action.title }
+    if (action.created !== undefined) { next.created = action.created }
+    if (action.availableWorkItemTypes !== undefined) { next.availableWorkItemTypes = action.availableWorkItemTypes }
+    if (action.selectedSlide !== undefined) { next.selectedSlide = action.selectedSlide }
+    // if (action.huddleGraph !== undefined) { next.huddleGraph = action.huddleGraph }
+    if (action.snapShot1 !== undefined && action.snapShot2 !== undefined) {
+        next.huddleGraph = reducerHuddleGraph(action.snapShot1, action.snapShot2, next.created)
+    }
+
+    console.log("REDUCER2", state, next)
+    return next
+}
+
+function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.HuddleSessionSnapshot, created?: number): HuddleGraph {
+    let workItems1 = snapShot1.workitems?.items || []
+    let workItems2 = snapShot2.workitems?.items || []
+
+    let slides: HuddleSlide[] = []
+    for (let wi2 of workItems2) {
+        // NEW
+        let wi1 = workItems1.find(w => w.id === wi2.id)
+        if (!wi1) {
+            let nextSlide = {
+                type: "new",
+                id: wi2.id,
+                title: wi2.title,
+                fieldChanges: [],
+                workItemType: wi2.workItemType || "unknown", // TODO: filter out?
+                pills: createPillsList(wi2, created),
+            }
+            slides.push(nextSlide)
+            continue;
+        }
+
+        // MATCHED
+        let nextSlide = createFoundSlide(wi1, wi2, created);
+        slides.push(nextSlide)
+    }
+
+    // TODO: slides only in previous
+    for (let wi1 of workItems1) {
+        let wi2 = workItems2.find(w => w.id !== wi1.id);
+        if (wi2) {
+            // already handled above
+            continue;
+        }
+
+        // OLD
+        let nextSlide = createFinalSlide(wi1, created);
+        slides.push(nextSlide)
+    }
+
+    console.log("debug", snapShot2.workitems?.items)
+    return {
+        debugWorkItems: workItems1,
+        slides: slides,
+    }
+}
+
+function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, created?: number): HuddleSlide {
+    let fieldChanges: HuddleSlideFieldChange[] = []
+    if (wi1.title !== wi2.title) { fieldChanges.push({ what: "Title", prev: wi1.title, next: wi2.title }) }
+    if (wi1.state !== wi2.state) { fieldChanges.push({ what: "State", prev: wi1.state || "", next: wi2.state || "" }) }
+    if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push({ what: "Area", prev: wi1.areaPath || "", next: wi2.areaPath || "" }) }
+    if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push({ what: "Iteration", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" }) }
+    if (wi1.description !== wi2.description) { fieldChanges.push({ what: "Description", prev: wi1.description || "", next: wi2.description || "" }) }
+    if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
+    if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
+    if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Backlog Priority", w => w.backlogPriority, wi1, wi2)) }
+    if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
+    if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", w => w.startDate, wi1, wi2)) }
+    if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", w => w.targetDate, wi1, wi2)) }
+    if (wi1.parent !== wi2.parent) { { fieldChanges.push(getParentFieldChange(wi1, wi2)) } }
+    if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { { fieldChanges.push(getCommentFieldChange(wi1, wi2)) } }
+    // TODO: work item type changes
+
+    // TODO: priority should be based on position of snapshot in huddle session, not the raw value
+
+    if (fieldChanges.length > 0) {
+        return ({
+            type: "update",
+            id: wi2.id,
+            title: wi2.title,
+            fieldChanges: fieldChanges,
+            workItemType: wi2.workItemType || "unknown",
+            pills: createPillsList(wi2, created),
+        })
+    } else {
+        return ({
+            type: "same",
+            id: wi2.id,
+            title: wi2.title,
+            fieldChanges: [],
+            workItemType: wi2.workItemType || "unknown",
+            pills: createPillsList(wi2, created)
+        })
+    }
+}
+
+function createFinalSlide(wi1: Db.WorkItemSnapshot, created?: number): HuddleSlide {
+    // TODO: has changes or not)
+    return ({
+        type: "final",
+        id: wi1.id,
+        title: wi1.title,
+        fieldChanges: [],
+        workItemType: wi1.workItemType || "unknown",
+        pills: createPillsList(wi1, created)
+    })
+}
+
+function createPillsList(wi: Db.WorkItemSnapshot, created?: number): HuddleSlidePill[] {
+    let pills: HuddleSlidePill[] = []
+    if (wi.targetDate) {
+        let targetDateMsec = Util.msecFromISO(wi.targetDate)
+        if (targetDateMsec) {
+            console.log("TARGET DATE", targetDateMsec, created)
+            if ((created || 0) >= targetDateMsec) {
+                pills.push({
+                    text: "Overdue",
+                    color: {
+                        red: 0xcc,
+                        green: 0,
+                        blue: 0,
+                    },
+                    message: `Target date was ${Util.msecToDate(targetDateMsec).toLocaleDateString()}`
+                })
+            }
+        }
+    }
+    return pills;
+}
+
+function getSomeFieldChange(what: string, prop: (wi: Db.WorkItemSnapshot) => any | undefined, wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+    let s1: string = ""
+    let s2: string = ""
+
+    if (prop(wi1)) {
+        s1 = `${prop(wi1)}`
+    } else {
+        s1 = "(not set)"
+    }
+
+    if (prop(wi2)) {
+        s2 = `${prop(wi2)}`
+
+    } else {
+        s2 = "(not set)"
+    }
+
+    return { what: what, prev: s1, next: s2 }
+}
+
+function getParentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+    let s1: string = ""
+    let s2: string = ""
+
+    if (wi1.parent) {
+        s1 = `#${wi1.parent}`
+    } else {
+        s1 = "(not set)"
+    }
+
+    if (wi2.parent) {
+        s2 = `#${wi2.parent}`
+
+    } else {
+        s2 = "(not set)"
+    }
+
+    return { what: "System.Parent", prev: s1, next: s2 }
+}
+
+function getCommentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+    let s1: string = ""
+    let s2: string = ""
+
+    if (wi1.comments && (wi1.comments?.length || 0) > 0) {
+        s1 = `${wi1.comments?.length}`
+    } else {
+        s1 = "0"
+    }
+
+    if (wi2.comments && (wi2.comments?.length || 0) > 0) {
+        s2 = `${wi2.comments?.length}`
+
+    } else {
+        s2 = "0"
+    }
+
+    return { what: "System.CommentCount", prev: s1, next: s2 }
+}
+
 function HuddleSessionPage(p: HuddleSessionPageProps) {
     // let [huddleDoc, setHuddleDoc] = React.useState<Db.HuddleStoredDocument | null>(null)
-    let [title, setTitle] = React.useState<string>("")
-    let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
-    let [selectedSlide, setSelectedSlide] = React.useState<number | undefined>(undefined)
-    let [createdMsec, setCreatedMsec] = React.useState<number>(0)
-    const [availableWorkItemTypes, setAvailableWorkItemTypes] = React.useState<Azdo.WorkItemType[]>([])
+    // let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
+    // let [selectedSlide, setSelectedSlide] = React.useState<number | undefined>(undefined)
+    const [state, dispatch] = React.useReducer<(state: ReducerState, action: ReducerAction) => ReducerState>(reducer, {
+        title: "ABC",
+        availableWorkItemTypes: [],
+        selectedSlide: null,
+    })
 
-
-    React.useEffect(() => {
-        const interval_id = setInterval(() => { poll(); }, 1000);
-        return () => { clearInterval(interval_id); };
-    }, []);
+    Util.useInterval(poll, 1000);
 
     React.useEffect(() => { init(); return; }, []);
     async function init() {
@@ -75,19 +288,19 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         console.log("HuddleSessionPage: huddle", huddle);
 
-        Azdo.getWorkItemTypes(p.session).then(t => {
-            setAvailableWorkItemTypes(t.value)
-        })
+        let t = await Azdo.getWorkItemTypes(p.session) // TODO: make separately async?
 
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
         let created = huddleSession.created || Util.msecNow()
         huddleSession.created = created
-        console.log("HuddleSessionPage: huddle session", huddleSession);
-        setCreatedMsec(created)
-        setTitle(`${huddle?.name || ""} Session - ${Util.msecToDate(created).toLocaleDateString()}`)
+        console.log("HuddleSessionPage: huddle session", huddleSession, created);
+        dispatch({
+            title: `${huddle?.name || ""} Session - ${Util.msecToDate(created).toLocaleDateString()}`,
+            created: created,
+            availableWorkItemTypes: t.value,
+        })
 
         let snapShot2 = huddleSession.snapshot
-
         // TODO: FOR DEBUGGING ONLY, ALWAYS GENERATE A NEW SNAPSHOT!
         snapShot2 = undefined
         // TODO: REMOVE THIS DEBUGGING CODE
@@ -100,9 +313,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 return
             }
 
-            let created2 = huddleSession.created || Util.msecNow()
-            snapShot2 = await getSnapshot(workItemQuery, created2, p.session)
+            snapShot2 = await getSnapshot(workItemQuery, created, p.session)
             huddleSession.snapshot = snapShot2
+        }
+
+        let savedHuddleSession = await Db.upsertHuddleSession(huddleSession, p.session)
+        if (!savedHuddleSession) {
+            console.error("failed to upsert huddle session:", huddleSession)
         }
 
         let snapShot1: Db.HuddleSessionSnapshot;
@@ -128,191 +345,9 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         // TODO: PERSIST ALL CHANGES TO HUDDLE SESSION
         console.log("Snapshot1:", snapShot1)
         console.log("Snapshot2:", snapShot2)
-
-        let workItems1 = snapShot1.workitems?.items || []
-        let workItems2 = snapShot2.workitems?.items || []
-
-        let slides: HuddleSlide[] = []
-        for (let wi2 of workItems2) {
-            // NEW
-            let wi1 = workItems1.find(w => w.id === wi2.id)
-            if (!wi1) {
-                let nextSlide = await createNewSlide(wi2);
-                slides.push(nextSlide)
-                continue;
-            }
-
-            // MATCHED
-            let nextSlide = await createFoundSlide(wi1, wi2);
-            slides.push(nextSlide)
-        }
-
-        // TODO: slides only in previous
-        for (let wi1 of workItems1) {
-            let wi2 = workItems2.find(w => w.id !== wi1.id);
-            if (wi2) {
-                // already handled above
-                continue;
-            }
-
-            // OLD
-            let nextSlide = await createFinalSlide(wi1);
-            slides.push(nextSlide)
-        }
-
-        console.log("debug", snapShot2.workitems?.items)
-        setGraph({
-            debugWorkItems: workItems1,
-            slides: slides,
-        })
-
-        let savedHuddleSession = await Db.upsertHuddleSession(huddleSession, p.session)
-        if (!savedHuddleSession) {
-            console.error("failed to upsert huddle session:", huddleSession)
-        }
-    }
-
-    async function createNewSlide(wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
-        return ({
-            type: "new",
-            id: wi2.id,
-            title: wi2.title,
-            fieldChanges: [],
-            workItemType: wi2.workItemType || "unknown", // TODO: filter out?
-            pills: createPillsList(wi2),
-        })
-    }
-
-    function getParentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
-        let s1: string = ""
-        let s2: string = ""
-
-        if (wi1.parent) {
-            s1 = `#${wi1.parent}`
-        } else {
-            s1 = "(not set)"
-        }
-
-        if (wi2.parent) {
-            s2 = `#${wi2.parent}`
-
-        } else {
-            s2 = "(not set)"
-        }
-
-        return { what: "System.Parent", prev: s1, next: s2 }
-    }
-
-    function getCommentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
-        let s1: string = ""
-        let s2: string = ""
-
-        if (wi1.comments && (wi1.comments?.length || 0) > 0) {
-            s1 = `${wi1.comments?.length}`
-        } else {
-            s1 = "0"
-        }
-
-        if (wi2.comments && (wi2.comments?.length || 0) > 0) {
-            s2 = `${wi2.comments?.length}`
-
-        } else {
-            s2 = "0"
-        }
-
-        return { what: "System.CommentCount", prev: s1, next: s2 }
-    }
-
-    function getSomeFieldChange(what: string, prop: (wi: Db.WorkItemSnapshot) => any | undefined, wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
-        let s1: string = ""
-        let s2: string = ""
-
-        if (prop(wi1)) {
-            s1 = `${prop(wi1)}`
-        } else {
-            s1 = "(not set)"
-        }
-
-        if (prop(wi2)) {
-            s2 = `${prop(wi2)}`
-
-        } else {
-            s2 = "(not set)"
-        }
-
-        return { what: what, prev: s1, next: s2 }
-    }
-
-    function createPillsList(wi: Db.WorkItemSnapshot): HuddleSlidePill[] {
-        let pills: HuddleSlidePill[] = []
-        if (wi.targetDate) {
-            let targetDateMsec = Util.msecFromISO(wi.targetDate)
-            if (targetDateMsec) {
-                if (createdMsec >= targetDateMsec) {
-                    pills.push({
-                        text: "Overdue",
-                        color: {
-                            red: 0xcc,
-                            green: 0,
-                            blue: 0,
-                        },
-                        message: `Target date was ${Util.msecToDate(targetDateMsec).toLocaleDateString()}`
-                    })
-                }
-            }
-        }
-        return pills;
-    }
-
-    async function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): Promise<HuddleSlide> {
-        let fieldChanges: HuddleSlideFieldChange[] = []
-        if (wi1.title !== wi2.title) { fieldChanges.push({ what: "Title", prev: wi1.title, next: wi2.title }) }
-        if (wi1.state !== wi2.state) { fieldChanges.push({ what: "State", prev: wi1.state || "", next: wi2.state || "" }) }
-        if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push({ what: "Area", prev: wi1.areaPath || "", next: wi2.areaPath || "" }) }
-        if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push({ what: "Iteration", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" }) }
-        if (wi1.description !== wi2.description) { fieldChanges.push({ what: "Description", prev: wi1.description || "", next: wi2.description || "" }) }
-        if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
-        if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
-        if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Backlog Priority", w => w.backlogPriority, wi1, wi2)) }
-        if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
-        if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", w => w.startDate, wi1, wi2)) }
-        if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", w => w.targetDate, wi1, wi2)) }
-        if (wi1.parent !== wi2.parent) { { fieldChanges.push(getParentFieldChange(wi1, wi2)) } }
-        if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { { fieldChanges.push(getCommentFieldChange(wi1, wi2)) } }
-        // TODO: work item type changes
-
-        // TODO: priority should be based on position of snapshot in huddle session, not the raw value
-
-        if (fieldChanges.length > 0) {
-            return ({
-                type: "update",
-                id: wi2.id,
-                title: wi2.title,
-                fieldChanges: fieldChanges,
-                workItemType: wi2.workItemType || "unknown",
-                pills: createPillsList(wi2),
-            })
-        } else {
-            return ({
-                type: "same",
-                id: wi2.id,
-                title: wi2.title,
-                fieldChanges: [],
-                workItemType: wi2.workItemType || "unknown",
-                pills: createPillsList(wi2)
-            })
-        }
-    }
-
-    async function createFinalSlide(wi1: Db.WorkItemSnapshot): Promise<HuddleSlide> {
-        // TODO: has changes or not)
-        return ({
-            type: "final",
-            id: wi1.id,
-            title: wi1.title,
-            fieldChanges: [],
-            workItemType: wi1.workItemType || "unknown",
-            pills: createPillsList(wi1)
+        dispatch({
+            snapShot1: snapShot1,
+            snapShot2: snapShot2,
         })
     }
 
@@ -387,22 +422,24 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     async function poll() {
-        console.log("HuddleSessionPage poll");
+        console.log("HuddleSessionPage poll", state);
     }
 
     function onSelectSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
-        setSelectedSlide(listRow.index)
+        dispatch({
+            selectedSlide: listRow.index
+        })
     }
 
     function renderSlideList() {
-        let slides = graph?.slides;
+        let slides = state.huddleGraph?.slides;
         if (!slides) { return <></> }
 
         let tasks = new ArrayItemProvider(slides)
 
         let selection = new ListSelection(true)
-        if (selectedSlide !== undefined) {
-            selection.select(selectedSlide, 1, false, false)
+        if (state.selectedSlide !== null) {
+            selection.select(state.selectedSlide, 1, false, false)
         }
 
         return (
@@ -465,6 +502,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderIconForWorkItemType(item: HuddleSlide) {
+        let availableWorkItemTypes = state.availableWorkItemTypes
         let wit = item.workItemType || "unknown";
         let wit2 = availableWorkItemTypes.findIndex(i => i.name === wit);
         let wit3 = (wit2 === -1) ? undefined : availableWorkItemTypes[wit2].icon
@@ -542,9 +580,9 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderSlideContent() {
-        let slideIndex = selectedSlide
-        let slides = graph?.slides
-        if (slideIndex === undefined || slides === undefined || slideIndex >= slides.length) {
+        let slideIndex = state.selectedSlide
+        let slides = state.huddleGraph?.slides
+        if (slideIndex === null || slides === undefined || slideIndex >= slides.length) {
             return <></>
         }
 
@@ -608,13 +646,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     // const [selection] = React.useState(new ListSelection({ selectOnFocus: false }));
     let selection = new ListSelection(true)
     // const [itemProvider] = React.useState(new ArrayItemProvider(sampleDate));
-    let itemProvider = new ArrayItemProvider(graph?.slides || [])
+    let itemProvider = new ArrayItemProvider(state.huddleGraph?.slides || [])
     // const [selectedItemObservable] = React.useState(new ObservableValue<string>(sampleDate[0]));
 
     return (
         <Page className='full-height'>
             <Header
-                title={title}
+                title={state.title}
                 titleSize={TitleSize.Large}
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
             />
@@ -642,3 +680,5 @@ export interface HuddleSessionPageProps {
 }
 
 export default HuddleSessionPage
+
+
