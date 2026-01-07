@@ -265,11 +265,8 @@ function getCommentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapsho
 }
 
 function HuddleSessionPage(p: HuddleSessionPageProps) {
-    // let [huddleDoc, setHuddleDoc] = React.useState<Db.HuddleStoredDocument | null>(null)
-    // let [graph, setGraph] = React.useState<HuddleGraph | undefined>(undefined)
-    // let [selectedSlide, setSelectedSlide] = React.useState<number | undefined>(undefined)
     const [state, dispatch] = React.useReducer<(state: ReducerState, action: ReducerAction) => ReducerState>(reducer, {
-        title: "ABC",
+        title: "",
         availableWorkItemTypes: [],
         selectedSlide: null,
     })
@@ -363,11 +360,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             }
         }
 
-        let items: Db.WorkItemSnapshot[] = []
-
         let batchIds: number[] = workItemsResult.workItems
             .map(i => i.id)
             .filter((id): id is number => id !== undefined)
+
+        let metaBatches: Azdo.GetWorkItemResult[][] = []
 
         let level = 0
         while (batchIds.length > 0) {
@@ -377,42 +374,135 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             let batch = await Azdo.getWorkItemBatchWithChunks(currentBatchIds, null, asOf, session)
             console.log("getSnapshot batch", level, batch.length, batch)
 
+            metaBatches.push(batch)
+
             for (const wi of batch) {
                 let wid = wi.id
-                if (!wid) { continue; } // TODO: error
-                // let wi2 = await Azdo.getWorkItem(wid, null, asOf, p.session)
-
-                let commentCount = wi.fields?.['System.CommentCount'] ?? 0;
-                // if (commentCount > 0) {
-                //     // TODO: fetch full comment details
-                //     let wicomments = await Azdo.getWorkItemComments(wid, p.session)
-                //     commentCount = wicomments?.count || commentCount
-                // }
+                if (!wid) { continue; }
 
                 let parentId = wi.fields?.['System.Parent']
                 if (parentId) {
                     batchIds.push(parentId)
                 }
+            }
+        }
 
-                items.push({
+        if (metaBatches.length == 0) {
+            return {
+                workitems: {
+                    items: []
+                }
+            }
+        }
+
+        let priorityMappings: PriorityMapping[] = []
+        interface PriorityMapping {
+            id: number
+            values: number[]
+        }
+
+        function getPriorityMapping(id: number): number[] | undefined {
+            let found = priorityMappings.find(m => m.id === id)
+            if (found === undefined) { return undefined }
+            return found.values
+        }
+
+        let items: Db.WorkItemSnapshot[] = []
+        for (let m = metaBatches.length - 1; m >= 0; m--) {
+            let metaBatch = metaBatches[m]
+            for (let wi of metaBatch) {
+                let wid = wi.id
+                let wif = wi.fields
+                if (!wid || !wif) { continue; }
+
+                let p0 = wif['Microsoft.VSTS.Common.BacklogPriority'] || Number.MAX_SAFE_INTEGER
+                let priorities: number[] = [p0]
+
+                let pid = wif['System.Parent']
+                if (pid) {
+                    let par = getPriorityMapping(pid)
+                    if (par) {
+                        priorities = [
+                            ...par,
+                            p0
+                        ]
+                    }
+                } else {
+                    console.warn("No parent for", wid)
+                }
+
+                // TODO: error if already exists?
+
+                priorityMappings.push({
                     id: wid,
-                    title: wi.fields?.['System.Title'] || "",
-                    priority: wi.fields?.['Microsoft.VSTS.Common.Priority'] || Number.MAX_SAFE_INTEGER,
-                    state: wi.fields?.['System.State'],
-                    areaPath: wi.fields?.['System.AreaPath'],
-                    iterationPath: wi.fields?.['System.IterationPath'],
-                    comments: Array.from({ length: commentCount }, (_v, k): Db.WorkItemSnapshotComment => { return { content: `TODO: Comment ${k}` } }),
-                    parent: wi.fields?.['System.Parent'],
-                    description: wi.fields?.['System.Description'],
-                    workItemType: wi.fields?.['System.WorkItemType'],
-                    tags: wi.fields?.['System.Tags'],
-                    backlogPriority: wi.fields?.['Microsoft.VSTS.Common.BacklogPriority'],
-                    startDate: wi.fields?.['Microsoft.VSTS.Scheduling.StartDate'],
-                    targetDate: wi.fields?.['Microsoft.VSTS.Scheduling.TargetDate'],
-                    reason: wi.fields?.['System.Reason'],
+                    values: priorities,
                 })
             }
         }
+
+        console.log("PRIORITY MAPPINGS", priorityMappings)
+
+        let mainBatch = metaBatches[0]
+        for (let wi of mainBatch) {
+            let wid = wi.id
+            let wif = wi.fields
+            if (!wid || !wif) { continue; }
+
+            let commentCount = wif['System.CommentCount'] ?? 0;
+            let comments = Array.from(
+                { length: commentCount },
+                (_v, k): Db.WorkItemSnapshotComment => { return { content: `TODO: Comment ${k}` } }
+            )
+
+            items.push({
+                id: wid,
+                title: wif['System.Title'] || "",
+                priority: wif['Microsoft.VSTS.Common.Priority'] || Number.MAX_SAFE_INTEGER,
+                state: wif['System.State'],
+                areaPath: wif['System.AreaPath'],
+                iterationPath: wif['System.IterationPath'],
+                comments: comments,
+                parent: wif['System.Parent'],
+                description: wif['System.Description'],
+                workItemType: wif['System.WorkItemType'],
+                tags: wif['System.Tags'],
+                backlogPriority: wif['Microsoft.VSTS.Common.BacklogPriority'],
+                backlogPriorities: getPriorityMapping(wid),
+                startDate: wif['Microsoft.VSTS.Scheduling.StartDate'],
+                targetDate: wif['Microsoft.VSTS.Scheduling.TargetDate'],
+                reason: wif['System.Reason'],
+            })
+        }
+
+        items.sort((a, b) => {
+            let ap = a.backlogPriorities
+            let bp = b.backlogPriorities
+
+            // missing priority at the bottom
+            if (ap == undefined || ap.length < 1) {
+                if (bp == undefined || bp.length < 1) { return 0 }
+                return 1
+            } else if (bp == undefined || bp.length < 1) {
+                return -1
+            }
+
+            let al = ap.length
+            let bl = bp.length
+            let ml = al < bl ? al : bl
+
+            for (let l = 0; l < ml; l++) {
+                let x = ap[l]
+                let y = bp[l]
+                if (x < y) { return -1 }
+                if (y > x) { return 1 }
+            }
+
+            // shorter path implies higher-level work item type
+            if (al < bl) { return -1 }
+            if (bl < al) { return 1 }
+
+            return 0
+        })
 
         // TODO: produce snapshot
         return {

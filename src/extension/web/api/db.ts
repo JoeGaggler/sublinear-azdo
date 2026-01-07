@@ -102,6 +102,7 @@ export interface WorkItemSnapshot {
     workItemType?: string
     tags?: string
     backlogPriority?: number
+    backlogPriorities?: number[]
     startDate?: string
     targetDate?: string
     parent?: number
