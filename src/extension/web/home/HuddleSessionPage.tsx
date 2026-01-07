@@ -39,9 +39,10 @@ interface HuddleSlide {
 }
 
 interface HuddleSlidePill {
-    text: string
+    text?: string
     color?: IColor
     message?: string
+    iconProps?: IIconProps
 }
 
 interface HuddleSlideFieldChange {
@@ -150,6 +151,44 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
 
     // TODO: priority should be based on position of snapshot in huddle session, not the raw value
 
+    let priorityPills: HuddleSlidePill[] = []
+    let p1 = wi1.relativePriority
+    let p2 = wi2.relativePriority
+    if (p2 === undefined) {
+        // priorityPills.push({
+        //     text: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
+        //     message: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
+        //     color: { red: 0xcc, green: 0xcc, blue: 0 }
+        // })
+    } else if (p1 === undefined) {
+        // skip
+        // priorityPills.push({
+        //     text: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
+        //     message: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
+        //     color: { red: 0xcc, green: 0xcc, blue: 0 }
+        // })
+    } else if (p1 > p2) {
+        priorityPills.push({
+            text: `${p2 + 1}`,
+            message: "UP!",
+            color: { red: 0, green: 0x99, blue: 0x99 },
+            iconProps: {
+                iconName: "Up"
+            }
+        })
+    } else if (p1 < p2) {
+        priorityPills.push({
+            text: `${p2 + 1}`,
+            message: "DOWN!",
+            color: { red: 0, green: 0x99, blue: 0x99 },
+            iconProps: {
+                iconName: "Down"
+            }
+        })
+    } else {
+        // NO CHANGE IN RELATIVE PRIORITY
+    }
+
     if (fieldChanges.length > 0) {
         return ({
             type: "update",
@@ -157,7 +196,10 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: fieldChanges,
             workItemType: wi2.workItemType || "unknown",
-            pills: createPillsList(wi2, created),
+            pills: [
+                ...priorityPills,
+                ...createPillsList(wi2, created),
+            ],
         })
     } else {
         return ({
@@ -166,7 +208,10 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: [],
             workItemType: wi2.workItemType || "unknown",
-            pills: createPillsList(wi2, created)
+            pills: [
+                ...priorityPills,
+                ...createPillsList(wi2, created),
+            ],
         })
     }
 }
@@ -474,14 +519,43 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             })
         }
 
+        // TODO: compute relative position based on final element relative to all others with the same prefix
+        function findSiblings(p: number[]): Db.WorkItemSnapshot[] {
+            let p2 = p.slice(0, -1)
+
+            let sibs: Db.WorkItemSnapshot[] = []
+            for (let sib of items) {
+                let sp = sib.backlogPriorities
+                if (!sp) { continue; }
+                if (sp.length != p.length) { continue; }
+
+                if (p2.every((val, idx) => val === sp[idx])) {
+                    sibs.push(sib)
+                }
+            }
+
+            console.log("SLICE", p, p2, sibs)
+            return sibs
+        }
+        for (let item of items) {
+            let wid = item.id
+            if (!wid) { continue; }
+            let p = item.backlogPriorities
+            if (!p) { continue }
+
+            let sibs = findSiblings(p)
+            let rp = sibs.findIndex(i => i.id == wid)
+            item.relativePriority = (rp == -1) ? undefined : rp
+        }
+
         items.sort((a, b) => {
             let ap = a.backlogPriorities
             let bp = b.backlogPriorities
 
-            // missing priority at the bottom
+            // missing priority sorts to the bottom
             if (ap == undefined || ap.length < 1) {
                 if (bp == undefined || bp.length < 1) { return 0 }
-                return 1
+                else { return 1 }
             } else if (bp == undefined || bp.length < 1) {
                 return -1
             }
@@ -606,11 +680,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderPillListItem(p: HuddleSlidePill) {
-        if (p.color) {
-            return <Pill variant={PillVariant.themedStandard} color={p.color}>{p.text}</Pill>
-        } else {
-            return <Pill variant={PillVariant.themedStandard}>{p.text}</Pill>
-        }
+        return <Pill variant={PillVariant.themedStandard} color={p.color} iconProps={p.iconProps}>{p.text || ""}</Pill>
     }
 
     function renderPillForFieldChange(fc: HuddleSlideFieldChange) {
