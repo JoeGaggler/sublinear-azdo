@@ -25,7 +25,6 @@ import type { IColor } from 'azure-devops-extension-api';
 
 
 interface HuddleGraph {
-    debugWorkItems: Db.WorkItemSnapshot[]
     slides: HuddleSlide[]
 }
 
@@ -114,7 +113,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
 
     // TODO: slides only in previous
     for (let wi1 of workItems1) {
-        let wi2 = workItems2.find(w => w.id !== wi1.id);
+        let wi2 = workItems2.find(w => w.id === wi1.id);
         if (wi2) {
             // already handled above
             continue;
@@ -127,7 +126,6 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
 
     console.log("debug", snapShot2.workitems?.items)
     return {
-        debugWorkItems: workItems1,
         slides: slides,
     }
 }
@@ -165,7 +163,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
     } else if (p1 > p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
-            message: "UP!",
+            message: `Ascended from ${p1 + 1}.`,
             color: { red: 0, green: 0x99, blue: 0x99 },
             iconProps: {
                 iconName: "Up"
@@ -174,7 +172,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
     } else if (p1 < p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
-            message: "DOWN!",
+            message: `Descended from ${p1 + 1}.`,
             color: { red: 0, green: 0x99, blue: 0x99 },
             iconProps: {
                 iconName: "Down"
@@ -747,7 +745,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                         {
                             slide.pills.map(p => {
                                 return (
-                                    <div className='flex-row flex-center rhythm-horizontal-4'>
+                                    <div className='flex-row flex-center rhythm-horizontal-8'>
                                         <div className=''>{renderPillListItem(p)}</div>
                                         <div className=''>{p.message || ""}</div>
                                     </div>
@@ -757,13 +755,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                         {
                             slide.fieldChanges.map(c => {
                                 return (
-                                    <div className='flex-row flex-center rhythm-horizontal-4'>
+                                    <div className='flex-row flex-center rhythm-horizontal-8'>
                                         <div className=''>{renderPillForFieldChange(c)}</div>
 
                                         <div className='flex-row flex-center rhythm-horizontal-8'>
-                                            <div>{c.prev}</div>
-                                            <div className='flex-row'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
-                                            <div>{c.next}</div>
+                                            <div className='font-weight-normal secondary-text'>{c.prev}</div>
+                                            <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
+                                            <div className='font-weight-semibold'>{c.next}</div>
                                         </div>
                                     </div>
                                 )
