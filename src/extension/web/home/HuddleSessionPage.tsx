@@ -533,6 +533,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 if (!sp) { continue; }
                 if (sp.length != p.length) { continue; }
 
+                // TODO: FLAWED, MUST BE BASED ON COMMON PARENT ID
+
                 if (p2.every((val, idx) => val === sp[idx])) {
                     sibs.push(sib)
                 }
@@ -553,12 +555,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         }
 
         items.sort((a, b): number => {
+            let tiebreaker = (a.id < b.id) ? -1 : 1
             let ap = a.backlogPriorities || []
             let bp = b.backlogPriorities || []
 
             // missing priority sorts to the bottom
             if (ap.length < 1) {
-                if (bp.length < 1) { return 0 }
+                if (bp.length < 1) { return tiebreaker }
                 else { return 1 }
             } else if (bp.length < 1) { return -1 }
 
@@ -569,6 +572,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             for (let l = 0; l < ml; l++) {
                 let x = ap[l]
                 let y = bp[l]
+
+                // HACK: if neither has a priority, use the tiebreaker
+                if (x == Number.MAX_SAFE_INTEGER && y == Number.MAX_SAFE_INTEGER) {
+                    return tiebreaker
+                }
                 if (x < y) { return -1 }
                 if (y < x) { return 1 }
             }
@@ -577,7 +585,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             if (al < bl) { return -1 }
             if (bl < al) { return 1 }
 
-            return 0
+            return tiebreaker
         })
 
         // TODO: produce snapshot
