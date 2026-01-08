@@ -145,7 +145,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
     if (wi1.description !== wi2.description) { fieldChanges.push({ what: "Description", prev: wi1.description || "", next: wi2.description || "" }) }
     if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
     if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
-    if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Backlog Priority", w => w.backlogPriority, wi1, wi2)) }
+    // if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Backlog Priority", w => w.backlogPriority, wi1, wi2)) }
     if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
     if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", dateFormatter(w => w.startDate), wi1, wi2)) }
     if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", dateFormatter(w => w.targetDate), wi1, wi2)) }
@@ -541,17 +541,15 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             item.relativePriority = (rp == -1) ? undefined : rp
         }
 
-        items.sort((a, b) => {
-            let ap = a.backlogPriorities
-            let bp = b.backlogPriorities
+        items.sort((a, b): number => {
+            let ap = a.backlogPriorities || []
+            let bp = b.backlogPriorities || []
 
             // missing priority sorts to the bottom
-            if (ap == undefined || ap.length < 1) {
-                if (bp == undefined || bp.length < 1) { return 0 }
+            if (ap.length < 1) {
+                if (bp.length < 1) { return 0 }
                 else { return 1 }
-            } else if (bp == undefined || bp.length < 1) {
-                return -1
-            }
+            } else if (bp.length < 1) { return -1 }
 
             let al = ap.length
             let bl = bp.length
@@ -561,7 +559,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 let x = ap[l]
                 let y = bp[l]
                 if (x < y) { return -1 }
-                if (y > x) { return 1 }
+                if (y < x) { return 1 }
             }
 
             // shorter path implies higher-level work item type
@@ -589,6 +587,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         })
     }
 
+    function onActivateSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
+        dispatch({
+            selectedSlide: listRow.index
+        })
+
+        onOpenWorkItem(listRow.data.id)
+    }
+
     function renderSlideList() {
         let slides = state.huddleGraph?.slides;
         if (!slides) { return <></> }
@@ -606,6 +612,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 renderRow={renderSlideListItem}
                 selection={selection}
                 onSelect={onSelectSlide}
+                onActivate={onActivateSlide}
                 width="100%"
             />
         )
