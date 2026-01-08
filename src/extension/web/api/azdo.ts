@@ -89,6 +89,7 @@ export interface WorkItemFields {
     "System.Reason"?: string
     "System.CommentCount"?: number
     "System.AreaPath"?: string
+    "System.AssignedTo"?: WorkItemPerson
     "System.Parent"?: number
     "System.Description"?: string
     "System.IterationPath"?: string
@@ -98,6 +99,13 @@ export interface WorkItemFields {
     "Microsoft.VSTS.Common.BacklogPriority"?: number
     "Microsoft.VSTS.Scheduling.StartDate"?: string
     "Microsoft.VSTS.Scheduling.TargetDate"?: string
+}
+
+export interface WorkItemPerson {
+    id?: string
+    descriptor?: string
+    displayName?: string
+    imageUrl?: string
 }
 
 export interface GetWorkItemResult {

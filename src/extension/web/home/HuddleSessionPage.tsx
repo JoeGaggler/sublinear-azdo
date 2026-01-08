@@ -35,6 +35,9 @@ interface HuddleSlide {
     fieldChanges: HuddleSlideFieldChange[]
     workItemType: string
     pills: HuddleSlidePill[]
+
+    // TEMPORARY
+    assignedToDisplayName?: string,
 }
 
 interface HuddleSlidePill {
@@ -101,6 +104,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
                 fieldChanges: [],
                 workItemType: wi2.workItemType || "unknown", // TODO: filter out?
                 pills: createPillsList(wi2, created),
+                assignedToDisplayName: wi2.assignedToDisplayName,
             }
             slides.push(nextSlide)
             continue;
@@ -189,6 +193,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: fieldChanges,
             workItemType: wi2.workItemType || "unknown",
+            assignedToDisplayName: wi2.assignedToDisplayName,
             pills: [
                 ...priorityPills,
                 ...createPillsList(wi2, created),
@@ -201,6 +206,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: [],
             workItemType: wi2.workItemType || "unknown",
+            assignedToDisplayName: wi2.assignedToDisplayName,
             pills: [
                 ...priorityPills,
                 ...createPillsList(wi2, created),
@@ -217,6 +223,7 @@ function createFinalSlide(wi1: Db.WorkItemSnapshot, created?: number): HuddleSli
         title: wi1.title,
         fieldChanges: [],
         workItemType: wi1.workItemType || "unknown",
+        assignedToDisplayName: wi1.assignedToDisplayName,
         pills: createPillsList(wi1, created)
     })
 }
@@ -492,6 +499,9 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 (_v, k): Db.WorkItemSnapshotComment => { return { content: `TODO: Comment ${k}` } }
             )
 
+            // Assigned
+            let assignedTo = wif['System.AssignedTo']
+
             items.push({
                 id: wid,
                 title: wif['System.Title'] || "",
@@ -509,6 +519,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 startDate: wif['Microsoft.VSTS.Scheduling.StartDate'],
                 targetDate: wif['Microsoft.VSTS.Scheduling.TargetDate'],
                 reason: wif['System.Reason'],
+                assignedToDisplayName: assignedTo?.displayName
             })
         }
 
@@ -724,6 +735,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return items;
     }
 
+    function renderAssigned(slide: HuddleSlide) {
+        // TODO: show avatar
+        return <>{slide.assignedToDisplayName}</>
+    }
+
     function renderSlideContent() {
         let slideIndex = state.selectedSlide
         let slides = state.huddleGraph?.slides
@@ -740,7 +756,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         // let a: string = `${slides.length}`
 
         return (
-            <div className='padding-left-8 full-width sticky-top-0'>
+            <div className='padding-left-8 full-width sticky-top-0 rhythm-vertical-8'>
                 <Header
                     titleIconProps={undefined}
                     title={renderWorkItemHeader(slide, "font-size-l")}
@@ -748,6 +764,12 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     contentClassName='flex-center'
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
+                <div className='flex-column full-width flex-start rhythm-vertical-4'>
+                    <div className='flex-row flex-baseline rhythm-horizontal-4'>
+                        <div className='font-size-l secondary-text'>Assigned:</div>
+                        <div className='font-size-l'>{renderAssigned(slide)}</div>
+                    </div>
+                </div>
                 <Card className='flex-self-start'>
                     <div className='flex-column full-width flex-start rhythm-vertical-4'>
                         {

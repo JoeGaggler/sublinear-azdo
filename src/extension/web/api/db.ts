@@ -108,6 +108,9 @@ export interface WorkItemSnapshot {
     targetDate?: string
     parent?: number
 
+    // TEMPORARY
+    assignedToDisplayName?: string
+
     // TODO
     comments?: WorkItemSnapshotComment[]
 }
