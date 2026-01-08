@@ -35,7 +35,9 @@ function HomePage(p: HomePageProps) {
         <Page>
             <Header
                 title={"Home Page"}
-                titleSize={TitleSize.Large} />
+                titleSize={TitleSize.Large}
+                contentClassName='flex-center'
+            />
             <div className="page-content page-content-top">
                 <Card>
                     <div className="flex-column">

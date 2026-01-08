@@ -231,6 +231,12 @@ export async function refreshSessionInfo(): Promise<Session | null> {
         let web = SDK.getWebContext()
         console.log("Web:", web)
 
+        let user = SDK.getUser()
+        console.log("User:", user)
+
+        let page = SDK.getPageContext()
+        console.log("Page:", page)
+
         let seconds = 60;
         return {
             isValid: true,

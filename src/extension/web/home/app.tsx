@@ -172,6 +172,7 @@ function App(p: AppProps) {
                     <Header
                         title={"Error"}
                         titleSize={TitleSize.Large}
+                        contentClassName='flex-center'
                         backButtonProps={bbProps} />
                     <div className="page-content page-content-top">
                         <Card>{message}</Card>
@@ -186,6 +187,7 @@ function App(p: AppProps) {
                     <Header
                         title={"Error"}
                         titleSize={TitleSize.Large}
+                        contentClassName='flex-center'
                         backButtonProps={bbProps} />
                     <div className="page-content page-content-top">
                         <Card>Unknown view: {route.view}</Card>

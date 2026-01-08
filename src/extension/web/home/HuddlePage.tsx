@@ -244,6 +244,7 @@ function HuddlePage(p: HuddlePageProps) {
                 <Header
                     title={huddle.name}
                     titleSize={TitleSize.Large}
+                    contentClassName='flex-center'
                     backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
                     commandBarItems={getHeaderCommandBarItems()}
                 />
@@ -279,6 +280,7 @@ function HuddlePage(p: HuddlePageProps) {
                 <Header
                     title={""}
                     titleSize={TitleSize.Large}
+                    contentClassName='flex-center'
                     backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
                 />
             </Page>

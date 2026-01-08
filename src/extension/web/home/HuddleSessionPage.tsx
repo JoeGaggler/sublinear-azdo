@@ -111,7 +111,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
         slides.push(nextSlide)
     }
 
-    // TODO: slides only in previous
+    // TODO: final slide should appear in original position
     for (let wi1 of workItems1) {
         let wi2 = workItems2.find(w => w.id === wi1.id);
         if (wi2) {
@@ -745,6 +745,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     titleIconProps={undefined}
                     title={renderWorkItemHeader(slide, "font-size-l")}
                     titleSize={TitleSize.Medium}
+                    contentClassName='flex-center'
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
                 <Card className='flex-self-start'>
@@ -799,6 +800,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             <Header
                 title={state.title}
                 titleSize={TitleSize.Large}
+                contentClassName='flex-center'
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
             />
             <div className="page-content page-content-top">

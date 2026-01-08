@@ -47,6 +47,7 @@ function HuddleSessionList(p: HuddleSessionListProps) {
                                 iconName: "ProFootball",
                                 size: IconSize.medium,
                             }}
+                            contentClassName='flex-center'
                             commandBarItems={[
                                 {
                                     id: "deleteSession",

@@ -105,6 +105,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
                             className='full-width'
                             title={huddle.name}
                             titleSize={TitleSize.Small}
+                            contentClassName='flex-center'
                             commandBarItems={[
                                 {
                                     id: "deleteHuddle",
@@ -127,6 +128,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
             <Header
                 title={"Huddles"}
                 titleSize={TitleSize.Large}
+                contentClassName='flex-center'
                 backButtonProps={Util.makeHeaderBackButtonProps(p.appNav)}
                 commandBarItems={[
                     {
