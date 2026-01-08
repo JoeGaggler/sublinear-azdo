@@ -133,6 +133,12 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
 }
 
 function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, created?: number): HuddleSlide {
+    function dateFormatter(prop: (s: Db.WorkItemSnapshot) => string | undefined): (s: Db.WorkItemSnapshot) => string | undefined {
+        return snapshot => {
+            let v = prop(snapshot)
+            return v && (Util.msecToDate(Util.msecFromISO(v)).toLocaleDateString())
+        }
+    };
     let fieldChanges: HuddleSlideFieldChange[] = []
     if (wi1.title !== wi2.title) { fieldChanges.push({ what: "Title", prev: wi1.title, next: wi2.title }) }
     if (wi1.state !== wi2.state) { fieldChanges.push({ what: "State", prev: wi1.state || "", next: wi2.state || "" }) }
@@ -143,30 +149,19 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
     if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
     if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Backlog Priority", w => w.backlogPriority, wi1, wi2)) }
     if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
-    if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", w => w.startDate, wi1, wi2)) }
-    if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", w => w.targetDate, wi1, wi2)) }
-    if (wi1.parent !== wi2.parent) { { fieldChanges.push(getParentFieldChange(wi1, wi2)) } }
-    if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { { fieldChanges.push(getCommentFieldChange(wi1, wi2)) } }
-    // TODO: work item type changes
-
-    // TODO: priority should be based on position of snapshot in huddle session, not the raw value
+    if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", dateFormatter(w => w.startDate), wi1, wi2)) }
+    if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", dateFormatter(w => w.targetDate), wi1, wi2)) }
+    if (wi1.parent !== wi2.parent) { fieldChanges.push(getParentFieldChange(wi1, wi2)) }
+    if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push(getSomeFieldChange("Type", w => w.workItemType, wi1, wi2)) }
+    if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { fieldChanges.push(getCommentFieldChange(wi1, wi2)) }
 
     let priorityPills: HuddleSlidePill[] = []
     let p1 = wi1.relativePriority
     let p2 = wi2.relativePriority
     if (p2 === undefined) {
-        // priorityPills.push({
-        //     text: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
-        //     message: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
-        //     color: { red: 0xcc, green: 0xcc, blue: 0 }
-        // })
+        // error: current snapshot should have this
     } else if (p1 === undefined) {
-        // skip
-        // priorityPills.push({
-        //     text: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
-        //     message: JSON.stringify({ p1: p1 || -1, p2: p2 || -1 }),
-        //     color: { red: 0xcc, green: 0xcc, blue: 0 }
-        // })
+        // skip: previous snapshot never calculated its value
     } else if (p1 > p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
@@ -186,7 +181,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             }
         })
     } else {
-        // NO CHANGE IN RELATIVE PRIORITY
+        // skip: no change
     }
 
     if (fieldChanges.length > 0) {
@@ -619,7 +614,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderPillGroup(item: HuddleSlide) {
-        return <PillGroup className="flex-row" overflow={PillGroupOverflow.wrap}>
+        return <PillGroup className="flex-row" overflow={PillGroupOverflow.fade}>
             {renderPillForSlideType(item)}
             {(item.pills) && (item.pills.map(p => renderPillListItem(p)))}
             {(item.fieldChanges) && (item.fieldChanges.map(fc => renderPillForFieldChange(fc)))}
@@ -641,27 +636,12 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return <Pill variant={PillVariant.themedStandard} iconProps={{ iconName: what.iconName }} >{what.text}</Pill>
     }
 
-    function iconPropsForSlideType(type: string): IIconProps {
-        switch (type) {
-            case "new": return { iconName: "AddTo" }
-            case "final": return { iconName: "Blocked2" }
-            case "update": return { iconName: "Edit" }
-            case "same": return { iconName: "CircleRing" }
-            default: return { iconName: "QuickNoteSolid" }
-        }
-    }
-
-    function renderIconForSlideType(item: HuddleSlide) {
-        let what: IIconProps = (() => { return iconPropsForSlideType(item.type) })();
-        return <Icon iconName={what.iconName} size={IconSize.medium} />
-    }
-
     function renderWorkItemHeader(item: HuddleSlide, className: string = ""): JSX.Element {
         return (
-            <div className={`flex-row rhythm-horizontal-8 ${className}`}>
+            <div className={`flex-row flex-center rhythm-horizontal-4 ${className}`}>
                 {renderIconForWorkItemType(item)}
-                <div className="wrap-text font-weight-semibold">{item.id}</div>
-                <div className="wrap-text secondary-text">{item.title}</div>
+                <div className="font-weight-semibold">{item.id}</div>
+                <div className="secondary-text text-ellipsis">{item.title}</div>
             </div>
         )
     }
@@ -703,11 +683,10 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function renderSlideListItem(rowIndex: number, item: HuddleSlide, details: IListItemDetails<HuddleSlide>, key?: string) {
         return (
             <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details}>
-                <div className="list-example-row flex-row h-scroll-hidden padding-8 rhythm-horizontal-8">
-                    {renderIconForSlideType(item)}
-                    <div className="flex-column h-scroll-hidden rhythm-vertical-4">
-                        {renderWorkItemHeader(item, "font-size-ms")}
-                        {renderPillGroup(item)}
+                <div className="list-example-row flex-row padding-4 rhythm-horizontal-8 scroll-hidden">
+                    <div className="flex-column rhythm-vertical-4 scroll-hidden">
+                        {renderWorkItemHeader(item, "font-size-ms scroll-hidden")}
+                        <div className='margin-left-16'>{renderPillGroup(item)}</div>
                     </div>
                 </div>
             </ListItem>
@@ -758,8 +737,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return (
             <div className='padding-left-8 full-width sticky-top-0'>
                 <Header
-                    titleIconProps={iconPropsForSlideType(slide.type)}
-                    title={renderWorkItemHeader(slide, "font-size-ml")}
+                    titleIconProps={undefined}
+                    title={renderWorkItemHeader(slide, "font-size-l")}
                     titleSize={TitleSize.Medium}
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
@@ -781,9 +760,9 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                                     <div className='flex-row flex-center rhythm-horizontal-4'>
                                         <div className=''>{renderPillForFieldChange(c)}</div>
 
-                                        <div className='flex-row rhythm-horizontal-8'>
+                                        <div className='flex-row flex-center rhythm-horizontal-8'>
                                             <div>{c.prev}</div>
-                                            <div className='flex-self-center'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
+                                            <div className='flex-row'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
                                             <div>{c.next}</div>
                                         </div>
                                     </div>
