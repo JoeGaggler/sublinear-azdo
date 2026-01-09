@@ -167,7 +167,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
     } else if (p1 > p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
-            message: `Ascended from ${p1 + 1}.`,
+            message: `Moved up from ${p1 + 1} to ${p2 + 1}`,
             color: { red: 0, green: 0x99, blue: 0x99 },
             iconProps: {
                 iconName: "Up"
@@ -176,7 +176,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
     } else if (p1 < p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
-            message: `Descended from ${p1 + 1}.`,
+            message: `Moved down from ${p1 + 1} to ${p2 + 1}`,
             color: { red: 0, green: 0x99, blue: 0x99 },
             iconProps: {
                 iconName: "Down"
@@ -523,27 +523,21 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             })
         }
 
-        function findSiblings(pid: number): Db.WorkItemSnapshot[] {
+        function findSiblings(pid: number | undefined): Db.WorkItemSnapshot[] {
             let sibs: Db.WorkItemSnapshot[] = []
             for (let sib of items) {
                 let spid = sib.parent
-                if (!spid) { continue; }
                 if (spid !== pid) { continue; }
-
                 sibs.push(sib)
             }
 
             sibs.sort(Db.sortWorkItemSnapshots)
-
             return sibs
         }
         for (let item of items) {
             let wid = item.id
             if (!wid) { continue; }
-
             let pid = item.parent
-            if (!pid) { continue }
-
             let sibs = findSiblings(pid)
             let rp = sibs.findIndex(i => i.id == wid)
             item.relativePriority = (rp == -1) ? undefined : rp
