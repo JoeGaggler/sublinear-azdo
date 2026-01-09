@@ -107,12 +107,19 @@ export interface WorkItemSnapshot {
     startDate?: string
     targetDate?: string
     parent?: number
+    assignedTo?: WorkItemSnapshotPerson
 
     // TEMPORARY
     assignedToDisplayName?: string
 
     // TODO
     comments?: WorkItemSnapshotComment[]
+}
+
+export interface WorkItemSnapshotPerson {
+    id?: string
+    name?: string
+    imageUrl?: string
 }
 
 export interface WorkItemSnapshotComment {

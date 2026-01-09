@@ -22,7 +22,7 @@ import { Card } from "azure-devops-ui/Card";
 import type { IHeaderCommandBarItem } from 'azure-devops-ui/HeaderCommandBar';
 import { type IWorkItemFormNavigationService } from "azure-devops-extension-api/WorkItemTracking";
 import type { IColor } from 'azure-devops-extension-api';
-
+import PersonaField from '../controls/PersonaField.tsx';
 
 interface HuddleGraph {
     slides: HuddleSlide[]
@@ -35,9 +35,13 @@ interface HuddleSlide {
     fieldChanges: HuddleSlideFieldChange[]
     workItemType: string
     pills: HuddleSlidePill[]
+    assignedTo?: HuddleSlidePerson
+}
 
-    // TEMPORARY
-    assignedToDisplayName?: string,
+interface HuddleSlidePerson {
+    id?: string
+    name?: string
+    imageUrl?: string
 }
 
 interface HuddleSlidePill {
@@ -97,14 +101,20 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
         // NEW
         let wi1 = workItems1.find(w => w.id === wi2.id)
         if (!wi1) {
-            let nextSlide = {
+            let nextSlide: HuddleSlide = {
                 type: "new",
                 id: wi2.id,
                 title: wi2.title,
                 fieldChanges: [],
                 workItemType: wi2.workItemType || "unknown", // TODO: filter out?
                 pills: createPillsList(wi2, created),
-                assignedToDisplayName: wi2.assignedToDisplayName,
+                assignedTo: (wi2.assignedTo !== undefined) ? (
+                    {
+                        id: wi2.assignedTo.id,
+                        name: wi2.assignedTo.name,
+                        imageUrl: wi2.assignedTo.imageUrl
+                    }
+                ) : undefined
             }
             slides.push(nextSlide)
             continue;
@@ -193,7 +203,12 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: fieldChanges,
             workItemType: wi2.workItemType || "unknown",
-            assignedToDisplayName: wi2.assignedToDisplayName,
+            assignedTo: (wi2.assignedTo !== undefined) ? (
+                {
+                    id: wi2.assignedTo.id,
+                    name: wi2.assignedTo.name,
+                    imageUrl: wi2.assignedTo.imageUrl
+                }) : undefined,
             pills: [
                 ...priorityPills,
                 ...createPillsList(wi2, created),
@@ -206,7 +221,12 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: [],
             workItemType: wi2.workItemType || "unknown",
-            assignedToDisplayName: wi2.assignedToDisplayName,
+            assignedTo: (wi2.assignedTo !== undefined) ? (
+                {
+                    id: wi2.assignedTo.id,
+                    name: wi2.assignedTo.name,
+                    imageUrl: wi2.assignedTo.imageUrl
+                }) : undefined,
             pills: [
                 ...priorityPills,
                 ...createPillsList(wi2, created),
@@ -223,7 +243,12 @@ function createFinalSlide(wi1: Db.WorkItemSnapshot, created?: number): HuddleSli
         title: wi1.title,
         fieldChanges: [],
         workItemType: wi1.workItemType || "unknown",
-        assignedToDisplayName: wi1.assignedToDisplayName,
+        assignedTo: (wi1.assignedTo !== undefined) ? (
+            {
+                id: wi1.assignedTo.id,
+                name: wi1.assignedTo.name,
+                imageUrl: wi1.assignedTo.imageUrl
+            }) : undefined,
         pills: createPillsList(wi1, created)
     })
 }
@@ -519,7 +544,12 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 startDate: wif['Microsoft.VSTS.Scheduling.StartDate'],
                 targetDate: wif['Microsoft.VSTS.Scheduling.TargetDate'],
                 reason: wif['System.Reason'],
-                assignedToDisplayName: assignedTo?.displayName
+                assignedTo: (assignedTo !== undefined) ? (
+                    {
+                        id: assignedTo.id,
+                        name: assignedTo.displayName,
+                        imageUrl: assignedTo.imageUrl
+                    }) : undefined,
             })
         }
 
@@ -544,7 +574,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         }
 
         items.sort(Db.sortWorkItemSnapshots)
-        
+
         // TODO: produce snapshot
         return {
             workitems: {
@@ -701,8 +731,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderAssigned(slide: HuddleSlide) {
-        // TODO: show avatar
-        return <>{slide.assignedToDisplayName}</>
+        let u = slide.assignedTo
+        return u && <PersonaField name={u.name} imageUrl={u.imageUrl} />
     }
 
     function renderSlideContent() {
@@ -722,7 +752,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         return (
             <div className='padding-left-8 full-width sticky-top-0 rhythm-vertical-8'>
-                <Header
+                <Header 
                     titleIconProps={undefined}
                     title={renderWorkItemHeader(slide, "font-size-l")}
                     titleSize={TitleSize.Medium}
@@ -731,8 +761,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 />
                 <div className='flex-column full-width flex-start rhythm-vertical-4'>
                     <div className='flex-row flex-baseline rhythm-horizontal-4'>
-                        <div className='font-size-l secondary-text'>Assigned:</div>
-                        <div className='font-size-l'>{renderAssigned(slide)}</div>
+                        <div className='font-size-l secondary-text flex-baseline'>Assigned:</div>
+                        <div className='font-size-l flex-row flex-baseline'>{renderAssigned(slide)}</div>
                     </div>
                 </div>
                 <Card className='flex-self-start'>
