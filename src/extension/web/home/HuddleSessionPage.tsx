@@ -523,71 +523,34 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             })
         }
 
-        // TODO: compute relative position based on final element relative to all others with the same prefix
-        function findSiblings(p: number[]): Db.WorkItemSnapshot[] {
-            let p2 = p.slice(0, -1)
-
+        function findSiblings(pid: number): Db.WorkItemSnapshot[] {
             let sibs: Db.WorkItemSnapshot[] = []
             for (let sib of items) {
-                let sp = sib.backlogPriorities
-                if (!sp) { continue; }
-                if (sp.length != p.length) { continue; }
+                let spid = sib.parent
+                if (!spid) { continue; }
+                if (spid !== pid) { continue; }
 
-                // TODO: FLAWED, MUST BE BASED ON COMMON PARENT ID
-
-                if (p2.every((val, idx) => val === sp[idx])) {
-                    sibs.push(sib)
-                }
+                sibs.push(sib)
             }
 
-            console.log("SLICE", p, p2, sibs)
+            sibs.sort(Db.sortWorkItemSnapshots)
+
             return sibs
         }
         for (let item of items) {
             let wid = item.id
             if (!wid) { continue; }
-            let p = item.backlogPriorities
-            if (!p) { continue }
 
-            let sibs = findSiblings(p)
+            let pid = item.parent
+            if (!pid) { continue }
+
+            let sibs = findSiblings(pid)
             let rp = sibs.findIndex(i => i.id == wid)
             item.relativePriority = (rp == -1) ? undefined : rp
         }
 
-        items.sort((a, b): number => {
-            let tiebreaker = (a.id < b.id) ? -1 : 1
-            let ap = a.backlogPriorities || []
-            let bp = b.backlogPriorities || []
-
-            // missing priority sorts to the bottom
-            if (ap.length < 1) {
-                if (bp.length < 1) { return tiebreaker }
-                else { return 1 }
-            } else if (bp.length < 1) { return -1 }
-
-            let al = ap.length
-            let bl = bp.length
-            let ml = al < bl ? al : bl
-
-            for (let l = 0; l < ml; l++) {
-                let x = ap[l]
-                let y = bp[l]
-
-                // HACK: if neither has a priority, use the tiebreaker
-                if (x == Number.MAX_SAFE_INTEGER && y == Number.MAX_SAFE_INTEGER) {
-                    return tiebreaker
-                }
-                if (x < y) { return -1 }
-                if (y < x) { return 1 }
-            }
-
-            // shorter path implies higher-level work item type
-            if (al < bl) { return -1 }
-            if (bl < al) { return 1 }
-
-            return tiebreaker
-        })
-
+        items.sort(Db.sortWorkItemSnapshots)
+        
         // TODO: produce snapshot
         return {
             workitems: {

@@ -333,7 +333,7 @@ export async function queryHuddleWorkItems(query: HuddleWorkItemQuery, asOf: num
     let whereString = `WHERE [System.TeamProject] = '${session.projectName}' AND [System.State] <> 'Done' AND [System.State] <> 'Removed'`
 
     if (query.workItemTypes) {
-        let workItemTypeString = query.workItemTypes.map(w => `'${w}'`) .join(',') // ` 'Product Backlog Item', 'Initiative', 'Feature', 'Epic', 'Issue', 'Task' `
+        let workItemTypeString = query.workItemTypes.map(w => `'${w}'`).join(',') // ` 'Product Backlog Item', 'Initiative', 'Feature', 'Epic', 'Issue', 'Task' `
         whereString += ` AND [System.WorkItemType] IN (${workItemTypeString})`
     }
 
@@ -506,4 +506,38 @@ export async function deleteMember(db: Database, memberId: string, session: Azdo
 
     db.members = newMembersDoc.members;
     return newMembersDoc;
+}
+
+export function sortWorkItemSnapshots(a: WorkItemSnapshot, b: WorkItemSnapshot): number {
+    let tiebreaker = (a.id < b.id) ? -1 : 1
+    let ap = a.backlogPriorities || []
+    let bp = b.backlogPriorities || []
+
+    // missing priority sorts to the bottom
+    if (ap.length < 1) {
+        if (bp.length < 1) { return tiebreaker }
+        else { return 1 }
+    } else if (bp.length < 1) { return -1 }
+
+    let al = ap.length
+    let bl = bp.length
+    let ml = al < bl ? al : bl
+
+    for (let l = 0; l < ml; l++) {
+        let x = ap[l]
+        let y = bp[l]
+
+        // HACK: if neither has a priority, use the tiebreaker
+        if (x == Number.MAX_SAFE_INTEGER && y == Number.MAX_SAFE_INTEGER) {
+            return tiebreaker
+        }
+        if (x < y) { return -1 }
+        if (y < x) { return 1 }
+    }
+
+    // shorter path implies higher-level work item type
+    if (al < bl) { return -1 }
+    if (bl < al) { return 1 }
+
+    return tiebreaker
 }
