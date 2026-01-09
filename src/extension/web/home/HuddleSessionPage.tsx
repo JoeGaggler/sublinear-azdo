@@ -23,6 +23,7 @@ import type { IHeaderCommandBarItem } from 'azure-devops-ui/HeaderCommandBar';
 import { type IWorkItemFormNavigationService } from "azure-devops-extension-api/WorkItemTracking";
 import type { IColor } from 'azure-devops-extension-api';
 import PersonaField from '../controls/PersonaField.tsx';
+import HuddleSlideField from '../controls/HuddleSlideField.tsx';
 
 interface HuddleGraph {
     slides: HuddleSlide[]
@@ -35,13 +36,7 @@ interface HuddleSlide {
     fieldChanges: HuddleSlideFieldChange[]
     workItemType: string
     pills: HuddleSlidePill[]
-    assignedTo?: HuddleSlidePerson
-}
-
-interface HuddleSlidePerson {
-    id?: string
-    name?: string
-    imageUrl?: string
+    workItem: Db.WorkItemSnapshot
 }
 
 interface HuddleSlidePill {
@@ -108,13 +103,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
                 fieldChanges: [],
                 workItemType: wi2.workItemType || "unknown", // TODO: filter out?
                 pills: createPillsList(wi2, created),
-                assignedTo: (wi2.assignedTo !== undefined) ? (
-                    {
-                        id: wi2.assignedTo.id,
-                        name: wi2.assignedTo.name,
-                        imageUrl: wi2.assignedTo.imageUrl
-                    }
-                ) : undefined
+                workItem: wi2,
             }
             slides.push(nextSlide)
             continue;
@@ -203,12 +192,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: fieldChanges,
             workItemType: wi2.workItemType || "unknown",
-            assignedTo: (wi2.assignedTo !== undefined) ? (
-                {
-                    id: wi2.assignedTo.id,
-                    name: wi2.assignedTo.name,
-                    imageUrl: wi2.assignedTo.imageUrl
-                }) : undefined,
+            workItem: wi2,
             pills: [
                 ...priorityPills,
                 ...createPillsList(wi2, created),
@@ -221,12 +205,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             title: wi2.title,
             fieldChanges: [],
             workItemType: wi2.workItemType || "unknown",
-            assignedTo: (wi2.assignedTo !== undefined) ? (
-                {
-                    id: wi2.assignedTo.id,
-                    name: wi2.assignedTo.name,
-                    imageUrl: wi2.assignedTo.imageUrl
-                }) : undefined,
+            workItem: wi2,
             pills: [
                 ...priorityPills,
                 ...createPillsList(wi2, created),
@@ -243,12 +222,7 @@ function createFinalSlide(wi1: Db.WorkItemSnapshot, created?: number): HuddleSli
         title: wi1.title,
         fieldChanges: [],
         workItemType: wi1.workItemType || "unknown",
-        assignedTo: (wi1.assignedTo !== undefined) ? (
-            {
-                id: wi1.assignedTo.id,
-                name: wi1.assignedTo.name,
-                imageUrl: wi1.assignedTo.imageUrl
-            }) : undefined,
+        workItem: wi1,
         pills: createPillsList(wi1, created)
     })
 }
@@ -731,7 +705,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderAssigned(slide: HuddleSlide) {
-        let u = slide.assignedTo
+        let u = slide.workItem.assignedTo
         return u && <PersonaField name={u.name} imageUrl={u.imageUrl} />
     }
 
@@ -752,18 +726,17 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         return (
             <div className='padding-left-8 full-width sticky-top-0 rhythm-vertical-8'>
-                <Header 
+                <Header
                     titleIconProps={undefined}
                     title={renderWorkItemHeader(slide, "font-size-l")}
                     titleSize={TitleSize.Medium}
                     contentClassName='flex-center'
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
-                <div className='flex-column full-width flex-start rhythm-vertical-4'>
-                    <div className='flex-row flex-baseline rhythm-horizontal-4'>
-                        <div className='font-size-l secondary-text flex-baseline'>Assigned:</div>
-                        <div className='font-size-l flex-row flex-baseline'>{renderAssigned(slide)}</div>
-                    </div>
+                <div className='flex-column full-width flex-start rhythm-vertical-8'>
+                    <HuddleSlideField name='Assigned' className='font-size-l'>{renderAssigned(slide)}</HuddleSlideField>
+                    <HuddleSlideField name='Start Date' className='font-size-l'>{slide.workItem.startDate}</HuddleSlideField>
+                    <HuddleSlideField name='Target Date' className='font-size-l'>{slide.workItem.targetDate}</HuddleSlideField>
                 </div>
                 <Card className='flex-self-start'>
                     <div className='flex-column full-width flex-start rhythm-vertical-4'>
