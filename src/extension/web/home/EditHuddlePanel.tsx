@@ -15,6 +15,7 @@ import type { IListBoxItem } from 'azure-devops-ui/ListBox';
 
 export function EditHuddlePanel(p: EditHuddlePanelProps) {
     const [name, setName] = useState(p.huddle.name)
+    const [team, setTeam] = useState(p.huddle.team)
     const [areaPath, setAreaPath] = useState(p.huddle.workItemQuery?.areaPath || "")
     const [availableWorkItemTypes, setAvailableWorkItemTypes] = useState<Azdo.WorkItemType[]>([])
     const [selectedWorkItemTypes, setSelectedWorkItemTypes] = useState<string[]>(p.huddle.workItemQuery?.workItemTypes || [])
@@ -42,6 +43,7 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
     async function onCommit() {
         let data: EditHuddlePanelValues = {
             name: name,
+            team: team,
             areaPath: areaPath,
             includeSubAreas: subAreasChecked,
             workItemTypes: selectedWorkItemTypes,
@@ -133,6 +135,13 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
                 />
 
                 <TextField
+                    label={"Team"}
+                    value={team}
+                    onChange={(e, nextValue) => e && setTeam(nextValue)}
+                    width={TextFieldWidth.standard}
+                />
+
+                <TextField
                     label={"Area Path"}
                     value={areaPath}
                     onChange={(e, nextValue) => e && setAreaPath(nextValue)}
@@ -168,6 +177,7 @@ export function EditHuddlePanel(p: EditHuddlePanelProps) {
 
 export interface EditHuddlePanelValues {
     name: string
+    team: string
     areaPath: string
     includeSubAreas: boolean
     workItemTypes: string[]

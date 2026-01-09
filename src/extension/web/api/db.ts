@@ -57,6 +57,7 @@ export interface HuddleItem {
 
 export interface HuddleStoredDocument extends StoredDocument {
     name: string;
+    team: string;
     workItemQuery?: HuddleWorkItemQuery
 }
 

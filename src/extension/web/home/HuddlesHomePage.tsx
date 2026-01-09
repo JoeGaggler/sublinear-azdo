@@ -51,6 +51,7 @@ function HuddlesHomePage(p: HuddlesHomePageProps) {
             let nextHuddle: Db.HuddleStoredDocument = {
                 id: id,
                 name: data.name,
+                team: data.team
             }
             let upsertResult = await Db.upsertHuddle(nextHuddle, p.sessionInfo)
             if (!upsertResult) {

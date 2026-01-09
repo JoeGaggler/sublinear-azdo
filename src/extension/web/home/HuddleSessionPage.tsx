@@ -6,6 +6,7 @@ import * as Util from '../api/util.ts';
 import type { AppNav } from './app.tsx';
 
 import React from 'react'
+import * as Luxon from 'luxon'
 
 // import { Card } from "azure-devops-ui/Card";
 import { Page } from "azure-devops-ui/Page";
@@ -52,12 +53,20 @@ interface HuddleSlideFieldChange {
     next: string
 }
 
+interface HuddleCycle {
+    name: string
+    path: string
+    startMsec: number
+    finishMsec: number
+}
+
 interface ReducerState {
     title: string,
     created?: number
     availableWorkItemTypes: Azdo.WorkItemType[]
     selectedSlide: number | null,
     huddleGraph?: HuddleGraph
+    cycles?: HuddleCycle[]
 }
 
 interface ReducerAction {
@@ -67,6 +76,7 @@ interface ReducerAction {
     selectedSlide?: number | null
     snapShot1?: Db.HuddleSessionSnapshot
     snapShot2?: Db.HuddleSessionSnapshot
+    cycles?: HuddleCycle[]
 }
 
 function reducer(state: ReducerState, action: ReducerAction): ReducerState {
@@ -78,7 +88,7 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
     if (action.created !== undefined) { next.created = action.created }
     if (action.availableWorkItemTypes !== undefined) { next.availableWorkItemTypes = action.availableWorkItemTypes }
     if (action.selectedSlide !== undefined) { next.selectedSlide = action.selectedSlide }
-    // if (action.huddleGraph !== undefined) { next.huddleGraph = action.huddleGraph }
+    if (action.cycles !== undefined) { next.cycles = action.cycles }
     if (action.snapShot1 !== undefined && action.snapShot2 !== undefined) {
         next.huddleGraph = reducerHuddleGraph(action.snapShot1, action.snapShot2, next.created)
     }
@@ -329,6 +339,28 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         console.log("HuddleSessionPage: huddle", huddle);
 
         let t = await Azdo.getWorkItemTypes(p.session) // TODO: make separately async?
+        let c = await Azdo.getIterations(huddle.team, p.session)
+        if (c && c.value) {
+            let cycles = c.value.flatMap((i): HuddleCycle | readonly HuddleCycle[] => {
+                let n = i.name
+                let p = i.path
+                let s = i.attributes?.startDate
+                let f = i.attributes?.finishDate
+                if (n && p && s && f) {
+                    return {
+                        name: n,
+                        path: p,
+                        startMsec: Util.msecFromISO(s),
+                        finishMsec: Util.msecFromISO(f),
+                    }
+                } else {
+                    return []
+                }
+            })
+            dispatch({
+                cycles: cycles
+            })
+        }
 
         let huddleSession = await Db.requireHuddleSessionStoredDocument(p.huddleSessionId, p.session)
         let created = huddleSession.created || Util.msecNow()
@@ -709,6 +741,34 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return u && <PersonaField name={u.name} imageUrl={u.imageUrl} />
     }
 
+    function renderCycleFromString(s?: string, path?: string) {
+        let c1: HuddleCycle | undefined = undefined
+        let msec: number | undefined = undefined
+        if (s) {
+            let msec1 = Util.msecFromISO(s)
+            let cycles = state.cycles || []
+            let c = cycles.filter(i => i.startMsec <= msec1 && msec1 <= i.finishMsec)
+            c1 = (c.length == 1 && c[0]) || undefined
+            msec = msec1
+        }
+        else if (path) {
+            let cycles = state.cycles || []
+            let c = cycles.filter(i => i.path === path)
+            c1 = (c.length == 1 && c[0]) || undefined
+            msec = c1?.finishMsec
+        }
+
+        if (c1) {
+            return <div className='flex-row rhythm-horizontal-4'>
+                <div>{c1.name}</div>
+                {msec && <div className='flex-row'>({Luxon.DateTime.fromMillis(msec).toRelative()})</div>}
+            </div>
+        } else {
+            return <></>
+        }
+    }
+
+
     function renderSlideContent() {
         let slideIndex = state.selectedSlide
         let slides = state.huddleGraph?.slides
@@ -735,8 +795,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 />
                 <div className='flex-column full-width flex-start rhythm-vertical-8'>
                     <HuddleSlideField name='Assigned' className='font-size-l'>{renderAssigned(slide)}</HuddleSlideField>
-                    <HuddleSlideField name='Start Date' className='font-size-l'>{slide.workItem.startDate}</HuddleSlideField>
-                    <HuddleSlideField name='Target Date' className='font-size-l'>{slide.workItem.targetDate}</HuddleSlideField>
+                    <HuddleSlideField name='Start Date' className='font-size-l'>{renderCycleFromString(slide.workItem.startDate)}</HuddleSlideField>
+                    <HuddleSlideField name='Target Date' className='font-size-l'>{renderCycleFromString(slide.workItem.targetDate, slide.workItem.iterationPath)}</HuddleSlideField>
                 </div>
                 <Card className='flex-self-start'>
                     <div className='flex-column full-width flex-start rhythm-vertical-4'>

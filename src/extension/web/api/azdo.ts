@@ -54,6 +54,31 @@ export async function restPost(url: string, body: any, bearertoken: string): Pro
 }
 
 //
+// Iterations
+//
+
+export interface Iteration {
+    id?: string
+    name?: string
+    path?: string
+    url?: string
+    attributes?: IterationAttributes
+}
+
+export interface IterationAttributes {
+    startDate?: string
+    finishDate?: string
+    timeFrame?: string
+}
+
+export async function getIterations(team: string, session: Session): Promise<AzdoResult<Iteration>> {
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/${team}/_apis/work/teamsettings/iterations?api-version=7.1`
+    let response = await restGet(url, session.bearerToken) as AzdoResult<Iteration>
+    console.log("getIterations:", response)
+    return response
+}
+
+//
 // Work Items
 //
 

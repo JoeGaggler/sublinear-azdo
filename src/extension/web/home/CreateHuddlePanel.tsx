@@ -6,10 +6,12 @@ import { TextField, TextFieldWidth } from "azure-devops-ui/TextField";
 
 export function CreateHuddlePanel(p: CreateHuddlePanelProps) {
     const [name, setName] = useState("")
+    const [team, setTeam] = useState("")
 
     async function onCreate() {
         let data: CreateHuddlePanelValues = {
-            name: name
+            name: name,
+            team: team,
         }
         await p.onCommit(data);
     }
@@ -45,6 +47,13 @@ export function CreateHuddlePanel(p: CreateHuddlePanelProps) {
                     onChange={(e, nextValue) => e && setName(nextValue)}
                     width={TextFieldWidth.standard}
                 />
+
+                <TextField
+                    label={"Team"}
+                    value={team}
+                    onChange={(e, nextValue) => e && setTeam(nextValue)}
+                    width={TextFieldWidth.standard}
+                />
             </div>
         </Panel>
     )
@@ -52,6 +61,7 @@ export function CreateHuddlePanel(p: CreateHuddlePanelProps) {
 
 export interface CreateHuddlePanelValues {
     name: string
+    team: string
 }
 
 export interface CreateHuddlePanelProps {

@@ -59,6 +59,7 @@ function HuddlePage(p: HuddlePageProps) {
 
             let nextHuddle: Db.HuddleStoredDocument = { ...huddle }
             nextHuddle.name = data.name
+            nextHuddle.team = data.team
             nextHuddle.workItemQuery = {
                 areaPath: data.areaPath,
                 includeSubAreas: data.includeSubAreas,
