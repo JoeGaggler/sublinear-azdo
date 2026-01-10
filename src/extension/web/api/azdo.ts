@@ -105,6 +105,24 @@ export interface GetWorkItemRevisionsValue {
     fields?: WorkItemFields
 }
 
+export interface GetWorkItemUpdatesValue {
+    id?: number,
+    rev?: number,
+    revisedDate?: string,
+    fields?: WorkItemFieldUpdates
+}
+
+export interface WorkItemFieldUpdates {
+    "System.ChangedDate"?: WorkItemFieldUpdateValues<string>
+    "System.IterationPath"?: WorkItemFieldUpdateValues<string>
+    "Microsoft.VSTS.Scheduling.TargetDate"?: WorkItemFieldUpdateValues<string>
+}
+
+export interface WorkItemFieldUpdateValues<T> {
+    oldValue?: T
+    newValue?: T
+}
+
 export interface WorkItemFields {
     "System.ChangedDate"?: string
     "System.Id"?: number
@@ -231,9 +249,16 @@ export async function getWorkItemComments(id: number, session: Session): Promise
 export async function getWorkItemRevisions(id: number, session: Session) {
     //GET https://dev.azure.com/{organization}/{project}/_apis/wit/workItems/{id}/revisions?$top={$top}&$skip={$skip}&$expand={$expand}&api-version=7.1
     let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}/revisions?$expand=all&api-version=7.1`
-    let response = await restGet(url, session.bearerToken) as QueryWorkItemsResult
+    let response = await restGet(url, session.bearerToken) as AzdoResult<GetWorkItemRevisionsValue>
     console.log("queryWorkItems:", response)
     return response as AzdoResult<GetWorkItemRevisionsValue>
+}
+
+export async function getWorkItemUpdates(id: number, session: Session) {
+    let url = `https://dev.azure.com/${session.organization}/${session.project}/_apis/wit/workItems/${id}/updates?$expand=all&api-version=7.1`
+    let response = await restGet(url, session.bearerToken) as AzdoResult<GetWorkItemUpdatesValue>
+    console.log("queryWorkItems:", response)
+    return response as AzdoResult<GetWorkItemUpdatesValue>
 }
 
 //

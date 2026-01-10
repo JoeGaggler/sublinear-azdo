@@ -1,3 +1,7 @@
+// TODO: show removed in its original location for fewer up/down indicators:
+// - no diff for current session
+// - future session filters out "removed", so relative positions will match
+
 import * as SDK from 'azure-devops-extension-sdk';
 
 import * as Azdo from '../api/azdo.ts';
@@ -25,6 +29,7 @@ import { type IWorkItemFormNavigationService } from "azure-devops-extension-api/
 import type { IColor } from 'azure-devops-extension-api';
 import PersonaField from '../controls/PersonaField.tsx';
 import HuddleSlideField from '../controls/HuddleSlideField.tsx';
+import TargetDatePanel from '../controls/TargetDatePanel.tsx';
 
 interface HuddleGraph {
     slides: HuddleSlide[]
@@ -60,6 +65,8 @@ interface ReducerState {
     selectedSlide: number | null,
     huddleGraph?: HuddleGraph
     cycles?: Db.HuddleCycle[]
+    activePanelName?: string
+    workitemRevisions?: WorkItemRevisionsReducerState
 }
 
 interface ReducerAction {
@@ -70,6 +77,13 @@ interface ReducerAction {
     snapShot1?: Db.HuddleSessionSnapshot
     snapShot2?: Db.HuddleSessionSnapshot
     cycles?: Db.HuddleCycle[]
+    activePanelName?: string | null
+    workitemRevisions?: WorkItemRevisionsReducerState
+}
+
+interface WorkItemRevisionsReducerState {
+    id: number,
+    revs: Azdo.GetWorkItemUpdatesValue[]
 }
 
 function reducer(state: ReducerState, action: ReducerAction): ReducerState {
@@ -85,6 +99,28 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
     if (action.snapShot1 !== undefined && action.snapShot2 !== undefined) {
         next.huddleGraph = reducerHuddleGraph(action.snapShot1, action.snapShot2, next)
     }
+
+    if (action.activePanelName === null) { next.activePanelName = undefined }
+    else if (action.activePanelName !== undefined) { next.activePanelName = action.activePanelName }
+
+    let wir = action.workitemRevisions || next.workitemRevisions
+    if (next.selectedSlide && next.huddleGraph) {
+        let slide = next.huddleGraph.slides[next.selectedSlide]
+        let swid = slide.id
+
+        if (wir !== undefined) {
+            let wid = wir.id
+            if (wid !== swid) {
+                wir = undefined
+            } else {
+                console.log("REDUCER WIR", swid, wir)
+            }
+        }
+    } else {
+        wir = undefined
+    }
+    next.workitemRevisions = wir
+    console.log("REDUCER WIR2", wir)
 
     console.log("REDUCER2", state, next)
     return next
@@ -239,15 +275,15 @@ function createPillsList(wi: Db.WorkItemSnapshot, state: ReducerState): HuddleSl
         targetDateMsec = targetCycle.finishMsec
     }
     if (targetDateMsec && state.created && state.created >= targetDateMsec) {
-                pills.push({
-                    text: "Overdue",
-                    color: {
-                        red: 0xcc,
-                        green: 0,
-                        blue: 0,
-                    },
-                    message: `Target date was ${Util.msecToDate(targetDateMsec).toLocaleDateString()}`
-                })
+        pills.push({
+            text: "Overdue",
+            color: {
+                red: 0xcc,
+                green: 0,
+                blue: 0,
+            },
+            message: `Target date was ${Util.msecToDate(targetDateMsec).toLocaleDateString()}`
+        })
     }
     return pills;
 }
@@ -587,10 +623,31 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         console.log("HuddleSessionPage poll", state);
     }
 
-    function onSelectSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
+    async function fetchWorkItemDetails(slide: HuddleSlide) {
+        let wid = slide.id
+        let aaa = await Azdo.getWorkItemUpdates(wid, p.session)
+        console.log("fetchWorkItemDetails", slide, aaa)
         dispatch({
-            selectedSlide: listRow.index
+            workitemRevisions: {
+                id: wid,
+                revs: aaa.value,
+            }
         })
+    }
+
+    function onSelectSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
+        let selectedSlide = listRow.index
+
+        dispatch({
+            selectedSlide: selectedSlide
+        })
+
+        if (state.huddleGraph && selectedSlide >= 0 && selectedSlide < state.huddleGraph.slides.length) {
+            let slide = state.huddleGraph.slides[selectedSlide]
+            fetchWorkItemDetails(slide)
+        }
+
+        fetchWorkItemDetails
     }
 
     function onActivateSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
@@ -779,7 +836,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 <div className='flex-column full-width flex-start rhythm-vertical-8'>
                     <HuddleSlideField name='Assigned' className='font-size-l'>{renderAssigned(slide)}</HuddleSlideField>
                     <HuddleSlideField name='Start Date' className='font-size-l'>{renderCycleFromDateString(slide.workItem.startDate)}</HuddleSlideField>
-                    <HuddleSlideField name='Target Date' className='font-size-l'>{renderCycleFromDateString(slide.workItem.targetDate, slide.workItem.iterationPath, true)}</HuddleSlideField>
+                    <HuddleSlideField name='Target Date' className='font-size-l'
+                        onClickHeading={() => { dispatch({ activePanelName: "target_date" }) }}
+                    >
+                        {renderCycleFromDateString(slide.workItem.targetDate, slide.workItem.iterationPath, true)}
+                    </HuddleSlideField>
                 </div>
                 <Card className='flex-self-start'>
                     <div className='flex-column full-width flex-start rhythm-vertical-4'>
@@ -822,10 +883,17 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return (renderSlideList())
     }
 
+    function onDismissTargetDatePanel() {
+        dispatch({
+            activePanelName: null,
+        })
+    }
+
     // const [selection] = React.useState(new ListSelection({ selectOnFocus: false }));
     let selection = new ListSelection(true)
     // const [itemProvider] = React.useState(new ArrayItemProvider(sampleDate));
     let itemProvider = new ArrayItemProvider(state.huddleGraph?.slides || [])
+
     // const [selectedItemObservable] = React.useState(new ObservableValue<string>(sampleDate[0]));
 
     return (
@@ -846,6 +914,48 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     {renderSlideContent()}
                 </div>
             </div>
+            {state.activePanelName == "target_date" && (
+                <TargetDatePanel onDismiss={() => { onDismissTargetDatePanel() }}>
+                    <div className='flex-column rhythm-vertical-8'>
+                        {
+                            state.workitemRevisions &&
+                            state.workitemRevisions.revs
+                                .filter(rev => rev.fields?.['System.IterationPath'] || rev.fields?.["Microsoft.VSTS.Scheduling.TargetDate"])
+                                .map(rev => {
+                                    let rd1 = rev.fields?.["System.ChangedDate"]?.newValue
+                                    let rd2 = rd1 && Util.msecFromISO(rd1)
+                                    let rd3 = rd2 && Util.msecToDate(rd2)
+                                    let rd4 = rd3 && rd3.toLocaleDateString()
+                                    let rd5 = rd2 && Luxon.DateTime.fromMillis(rd2).toRelative()
+
+                                    let td1 = rev.fields?.["Microsoft.VSTS.Scheduling.TargetDate"]?.newValue
+                                    let td2 = td1 && Util.msecFromISO(td1)
+                                    let td3 = td2 && Util.msecToDate(td2).toLocaleDateString()
+
+                                    let ip1 = rev.fields?.['System.IterationPath']?.newValue
+                                    return (
+                                        <>
+                                            {rd4 && rd5 && td3 &&
+                                                <div className='flex-row rhythm-horizontal-8'>
+                                                    <div>{rd5}</div>
+                                                    <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
+                                                    <div>{td3}</div>
+                                                </div>
+                                            }
+                                            {ip1 &&
+                                                <div className='flex-row rhythm-horizontal-8'>
+                                                    <div>{rd5}</div>
+                                                    <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
+                                                    <div>{ip1}</div>
+                                                </div>
+                                            }
+                                        </>
+                                    )
+                                })
+                        }
+                    </div>
+                </TargetDatePanel>
+            )}
         </Page>
     )
 }
