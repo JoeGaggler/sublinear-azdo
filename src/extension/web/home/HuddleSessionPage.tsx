@@ -53,20 +53,13 @@ interface HuddleSlideFieldChange {
     next: string
 }
 
-interface HuddleCycle {
-    name: string
-    path: string
-    startMsec: number
-    finishMsec: number
-}
-
 interface ReducerState {
     title: string,
     created?: number
     availableWorkItemTypes: Azdo.WorkItemType[]
     selectedSlide: number | null,
     huddleGraph?: HuddleGraph
-    cycles?: HuddleCycle[]
+    cycles?: Db.HuddleCycle[]
 }
 
 interface ReducerAction {
@@ -76,7 +69,7 @@ interface ReducerAction {
     selectedSlide?: number | null
     snapShot1?: Db.HuddleSessionSnapshot
     snapShot2?: Db.HuddleSessionSnapshot
-    cycles?: HuddleCycle[]
+    cycles?: Db.HuddleCycle[]
 }
 
 function reducer(state: ReducerState, action: ReducerAction): ReducerState {
@@ -90,14 +83,14 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
     if (action.selectedSlide !== undefined) { next.selectedSlide = action.selectedSlide }
     if (action.cycles !== undefined) { next.cycles = action.cycles }
     if (action.snapShot1 !== undefined && action.snapShot2 !== undefined) {
-        next.huddleGraph = reducerHuddleGraph(action.snapShot1, action.snapShot2, next.created)
+        next.huddleGraph = reducerHuddleGraph(action.snapShot1, action.snapShot2, next)
     }
 
     console.log("REDUCER2", state, next)
     return next
 }
 
-function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.HuddleSessionSnapshot, created?: number): HuddleGraph {
+function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.HuddleSessionSnapshot, state: ReducerState): HuddleGraph {
     let workItems1 = snapShot1.workitems?.items || []
     let workItems2 = snapShot2.workitems?.items || []
 
@@ -112,7 +105,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
                 title: wi2.title,
                 fieldChanges: [],
                 workItemType: wi2.workItemType || "unknown", // TODO: filter out?
-                pills: createPillsList(wi2, created),
+                pills: createPillsList(wi2, state),
                 workItem: wi2,
             }
             slides.push(nextSlide)
@@ -120,7 +113,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
         }
 
         // MATCHED
-        let nextSlide = createFoundSlide(wi1, wi2, created);
+        let nextSlide = createFoundSlide(wi1, wi2, state);
         slides.push(nextSlide)
     }
 
@@ -133,7 +126,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
         }
 
         // OLD
-        let nextSlide = createFinalSlide(wi1, created);
+        let nextSlide = createFinalSlide(wi1, state);
         slides.push(nextSlide)
     }
 
@@ -143,7 +136,7 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
     }
 }
 
-function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, created?: number): HuddleSlide {
+function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, state: ReducerState): HuddleSlide {
     function dateFormatter(prop: (s: Db.WorkItemSnapshot) => string | undefined): (s: Db.WorkItemSnapshot) => string | undefined {
         return snapshot => {
             let v = prop(snapshot)
@@ -205,7 +198,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             workItem: wi2,
             pills: [
                 ...priorityPills,
-                ...createPillsList(wi2, created),
+                ...createPillsList(wi2, state),
             ],
         })
     } else {
@@ -218,13 +211,13 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, cr
             workItem: wi2,
             pills: [
                 ...priorityPills,
-                ...createPillsList(wi2, created),
+                ...createPillsList(wi2, state),
             ],
         })
     }
 }
 
-function createFinalSlide(wi1: Db.WorkItemSnapshot, created?: number): HuddleSlide {
+function createFinalSlide(wi1: Db.WorkItemSnapshot, state: ReducerState): HuddleSlide {
     // TODO: has changes or not)
     return ({
         type: "final",
@@ -233,16 +226,19 @@ function createFinalSlide(wi1: Db.WorkItemSnapshot, created?: number): HuddleSli
         fieldChanges: [],
         workItemType: wi1.workItemType || "unknown",
         workItem: wi1,
-        pills: createPillsList(wi1, created)
+        pills: createPillsList(wi1, state)
     })
 }
 
-function createPillsList(wi: Db.WorkItemSnapshot, created?: number): HuddleSlidePill[] {
+function createPillsList(wi: Db.WorkItemSnapshot, state: ReducerState): HuddleSlidePill[] {
     let pills: HuddleSlidePill[] = []
-    if (wi.targetDate && created) {
-        let targetDateMsec = Util.msecFromISO(wi.targetDate)
-        if (targetDateMsec) {
-            if (created >= targetDateMsec) {
+
+    let targetDateMsec: number | undefined = wi.targetDate ? Util.msecFromISO(wi.targetDate) : undefined
+    let targetCycle = Db.getCycleForDateOrIteration(state.cycles || [], targetDateMsec, wi.iterationPath)
+    if (targetCycle) {
+        targetDateMsec = targetCycle.finishMsec
+    }
+    if (targetDateMsec && state.created && state.created >= targetDateMsec) {
                 pills.push({
                     text: "Overdue",
                     color: {
@@ -252,8 +248,6 @@ function createPillsList(wi: Db.WorkItemSnapshot, created?: number): HuddleSlide
                     },
                     message: `Target date was ${Util.msecToDate(targetDateMsec).toLocaleDateString()}`
                 })
-            }
-        }
     }
     return pills;
 }
@@ -341,7 +335,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         let t = await Azdo.getWorkItemTypes(p.session) // TODO: make separately async?
         let c = await Azdo.getIterations(huddle.team, p.session)
         if (c && c.value) {
-            let cycles = c.value.flatMap((i): HuddleCycle | readonly HuddleCycle[] => {
+            let cycles = c.value.flatMap((i): Db.HuddleCycle | readonly Db.HuddleCycle[] => {
                 let n = i.name
                 let p = i.path
                 let s = i.attributes?.startDate
@@ -741,33 +735,22 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return u && <PersonaField name={u.name} imageUrl={u.imageUrl} />
     }
 
-    function renderCycleFromString(s?: string, path?: string) {
-        let c1: HuddleCycle | undefined = undefined
-        let msec: number | undefined = undefined
-        if (s) {
-            let msec1 = Util.msecFromISO(s)
-            let cycles = state.cycles || []
-            let c = cycles.filter(i => i.startMsec <= msec1 && msec1 <= i.finishMsec)
-            c1 = (c.length == 1 && c[0]) || undefined
-            msec = msec1
-        }
-        else if (path) {
-            let cycles = state.cycles || []
-            let c = cycles.filter(i => i.path === path)
-            c1 = (c.length == 1 && c[0]) || undefined
-            msec = c1?.finishMsec
+    function renderCycleFromDateString(dateString?: string, path?: string, isFinish: boolean = true) {
+        let dateMsec = (dateString && Util.msecFromISO(dateString)) || undefined
+        let targetCycle = Db.getCycleForDateOrIteration(state.cycles || [], dateMsec, path)
+        if (targetCycle) {
+            dateMsec = isFinish ? targetCycle.finishMsec : targetCycle.startMsec
         }
 
-        if (c1) {
+        if (targetCycle) {
             return <div className='flex-row rhythm-horizontal-4'>
-                <div>{c1.name}</div>
-                {msec && <div className='flex-row'>({Luxon.DateTime.fromMillis(msec).toRelative()})</div>}
+                <div>{targetCycle.name}</div>
+                {dateMsec && <div className='flex-row'>({Luxon.DateTime.fromMillis(dateMsec).toRelative()})</div>}
             </div>
         } else {
             return <></>
         }
     }
-
 
     function renderSlideContent() {
         let slideIndex = state.selectedSlide
@@ -795,8 +778,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                 />
                 <div className='flex-column full-width flex-start rhythm-vertical-8'>
                     <HuddleSlideField name='Assigned' className='font-size-l'>{renderAssigned(slide)}</HuddleSlideField>
-                    <HuddleSlideField name='Start Date' className='font-size-l'>{renderCycleFromString(slide.workItem.startDate)}</HuddleSlideField>
-                    <HuddleSlideField name='Target Date' className='font-size-l'>{renderCycleFromString(slide.workItem.targetDate, slide.workItem.iterationPath)}</HuddleSlideField>
+                    <HuddleSlideField name='Start Date' className='font-size-l'>{renderCycleFromDateString(slide.workItem.startDate)}</HuddleSlideField>
+                    <HuddleSlideField name='Target Date' className='font-size-l'>{renderCycleFromDateString(slide.workItem.targetDate, slide.workItem.iterationPath, true)}</HuddleSlideField>
                 </div>
                 <Card className='flex-self-start'>
                     <div className='flex-column full-width flex-start rhythm-vertical-4'>

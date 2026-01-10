@@ -86,6 +86,13 @@ export interface HuddleSessionSnapshot {
     workitems?: WorkItemsSnapshot;
 }
 
+export interface HuddleCycle {
+    name: string
+    path: string
+    startMsec: number
+    finishMsec: number
+}
+
 export interface WorkItemsSnapshot {
     items: WorkItemSnapshot[]
 }
@@ -548,4 +555,20 @@ export function sortWorkItemSnapshots(a: WorkItemSnapshot, b: WorkItemSnapshot):
     if (bl < al) { return 1 }
 
     return tiebreaker
+}
+
+export function getCycleForDateOrIteration(cycles: HuddleCycle[], targetDate?: number, iteration?: string): HuddleCycle | undefined {
+    if (targetDate !== undefined) {
+        let c = cycles.filter(i => i.startMsec <= targetDate && targetDate <= i.finishMsec)
+        let c0 = (c.length == 1 && c[0]) || undefined
+        if (c0) { return c0 }
+    }
+
+    if (iteration !== undefined) {
+        let c = cycles.filter(i => i.path === iteration)
+        let c0 = (c.length == 1 && c[0]) || undefined
+        if (c0) { return c0 }
+    }
+
+    return undefined
 }
