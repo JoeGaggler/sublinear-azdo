@@ -104,7 +104,7 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
     else if (action.activePanelName !== undefined) { next.activePanelName = action.activePanelName }
 
     let wir = action.workitemRevisions || next.workitemRevisions
-    if (next.selectedSlide && next.huddleGraph) {
+    if (typeof next.selectedSlide === "number" && next.huddleGraph) {
         let slide = next.huddleGraph.slides[next.selectedSlide]
         let swid = slide.id
 
@@ -834,9 +834,25 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
                 <div className='flex-column full-width flex-start rhythm-vertical-8'>
-                    <HuddleSlideField name='Assigned' className='font-size-l'>{renderAssigned(slide)}</HuddleSlideField>
-                    <HuddleSlideField name='Start Date' className='font-size-l'>{renderCycleFromDateString(slide.workItem.startDate)}</HuddleSlideField>
-                    <HuddleSlideField name='Target Date' className='font-size-l'
+                    <HuddleSlideField
+                        name='Assigned'
+                        className='font-size-l'
+                        onClickHeading={() => { }}
+                    >
+                        {renderAssigned(slide)}
+                    </HuddleSlideField>
+
+                    <HuddleSlideField
+                        name='Start Date'
+                        className='font-size-l'
+                        onClickHeading={() => { }}
+                    >
+                        {renderCycleFromDateString(slide.workItem.startDate)}
+                    </HuddleSlideField>
+
+                    <HuddleSlideField
+                        name='Target Date'
+                        className='font-size-l'
                         onClickHeading={() => { dispatch({ activePanelName: "target_date" }) }}
                     >
                         {renderCycleFromDateString(slide.workItem.targetDate, slide.workItem.iterationPath, true)}
