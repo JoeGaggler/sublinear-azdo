@@ -30,6 +30,7 @@ import type { IColor } from 'azure-devops-extension-api';
 import PersonaField from '../controls/PersonaField.tsx';
 import HuddleSlideField from '../controls/HuddleSlideField.tsx';
 import TargetDatePanel from '../controls/TargetDatePanel.tsx';
+import FieldChange from '../controls/FieldChange.tsx';
 
 interface HuddleGraph {
     slides: HuddleSlide[]
@@ -875,12 +876,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                                 return (
                                     <div className='flex-row flex-center rhythm-horizontal-8'>
                                         <div className=''>{renderPillForFieldChange(c)}</div>
-
-                                        <div className='flex-row flex-center rhythm-horizontal-8'>
-                                            <div className='font-weight-normal secondary-text'>{c.prev}</div>
-                                            <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
-                                            <div className='font-weight-semibold'>{c.next}</div>
-                                        </div>
+                                        <FieldChange prev={c.prev} next={c.next} />
                                     </div>
                                 )
                             })
