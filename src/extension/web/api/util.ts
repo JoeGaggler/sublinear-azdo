@@ -1,6 +1,7 @@
 import { type IButtonProps } from "azure-devops-ui/Button";
 import type { AppNav } from "../home/app";
 import React from 'react'
+import * as Luxon from 'luxon'
 
 
 export function uuid(prefix: string): string {
@@ -14,6 +15,8 @@ export function uuid(prefix: string): string {
 export function msecNow(): number { return Date.now(); }
 export function msecToDate(msec: number): Date { return new Date(msec); }
 export function msecToISO(msec: number): string { return new Date(msec).toISOString(); }
+export function msecToDateString(msec: number): string { return new Date(msec).toLocaleDateString(); }
+export function msecToRelative(msec: number): string | null { return Luxon.DateTime.fromMillis(msec).toRelative() }
 export function msecFromISO(iso: string): number { return new Date(iso).getTime(); }
 
 export function forEachReversed<T>(array: T[], iteration: (t: T) => void) {

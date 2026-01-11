@@ -558,16 +558,22 @@ export function sortWorkItemSnapshots(a: WorkItemSnapshot, b: WorkItemSnapshot):
 }
 
 export function getCycleForDateOrIteration(cycles: HuddleCycle[], targetDate?: number, iteration?: string): HuddleCycle | undefined {
-    if (targetDate !== undefined) {
-        let c = cycles.filter(i => i.startMsec <= targetDate && targetDate <= i.finishMsec)
-        let c0 = (c.length == 1 && c[0]) || undefined
-        if (c0) { return c0 }
-    }
-
     if (iteration !== undefined) {
         let c = cycles.filter(i => i.path === iteration)
         let c0 = (c.length == 1 && c[0]) || undefined
         if (c0) { return c0 }
+    }
+
+    if (targetDate !== undefined) {
+        let c0 = cycles.filter(i => i.startMsec <= targetDate && targetDate <= i.finishMsec)
+        let c1 = (c0.length == 1 && c0[0]) || undefined
+        if (c1) { return c1 }
+
+        // fallback: most recent iteration starting prior to target date
+        let c2 = cycles.filter(i => i.startMsec <= targetDate)
+        c2.sort((a, b) => b.startMsec - a.startMsec)
+        let c3 = (c2.length > 0 && c2[0]) || undefined
+        if (c3) { return c3 }
     }
 
     return undefined

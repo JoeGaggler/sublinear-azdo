@@ -40,7 +40,6 @@ interface HuddleSlide {
     type: string
     id: number
     title: string
-    fieldChanges: HuddleSlideFieldChange[]
     workItemType: string
     pills: HuddleSlidePill[]
     workItem: Db.WorkItemSnapshot
@@ -49,14 +48,8 @@ interface HuddleSlide {
 interface HuddleSlidePill {
     text?: string
     color?: IColor
-    message?: string
     iconProps?: IIconProps
-}
-
-interface HuddleSlideFieldChange {
-    what: string
-    prev: string
-    next: string
+    message?: JSX.Element
 }
 
 interface ReducerState {
@@ -92,6 +85,7 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
         ...state
     }
 
+    // quick setters
     if (action.title !== undefined) { next.title = action.title }
     if (action.created !== undefined) { next.created = action.created }
     if (action.availableWorkItemTypes !== undefined) { next.availableWorkItemTypes = action.availableWorkItemTypes }
@@ -101,9 +95,11 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
         next.huddleGraph = reducerHuddleGraph(action.snapShot1, action.snapShot2, next)
     }
 
+    // panel
     if (action.activePanelName === null) { next.activePanelName = undefined }
     else if (action.activePanelName !== undefined) { next.activePanelName = action.activePanelName }
 
+    // work item revisions
     let wir = action.workitemRevisions || next.workitemRevisions
     if (typeof next.selectedSlide === "number" && next.huddleGraph) {
         let slide = next.huddleGraph.slides[next.selectedSlide]
@@ -113,15 +109,12 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
             let wid = wir.id
             if (wid !== swid) {
                 wir = undefined
-            } else {
-                console.log("REDUCER WIR", swid, wir)
             }
         }
     } else {
         wir = undefined
     }
     next.workitemRevisions = wir
-    console.log("REDUCER WIR2", wir)
 
     console.log("REDUCER2", state, next)
     return next
@@ -140,7 +133,6 @@ function reducerHuddleGraph(snapShot1: Db.HuddleSessionSnapshot, snapShot2: Db.H
                 type: "new",
                 id: wi2.id,
                 title: wi2.title,
-                fieldChanges: [],
                 workItemType: wi2.workItemType || "unknown", // TODO: filter out?
                 pills: createPillsList(wi2, state),
                 workItem: wi2,
@@ -180,19 +172,26 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
             return v && (Util.msecToDate(Util.msecFromISO(v)).toLocaleDateString())
         }
     };
-    let fieldChanges: HuddleSlideFieldChange[] = []
-    if (wi1.title !== wi2.title) { fieldChanges.push({ what: "Title", prev: wi1.title, next: wi2.title }) }
-    if (wi1.state !== wi2.state) { fieldChanges.push({ what: "State", prev: wi1.state || "", next: wi2.state || "" }) }
-    if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push({ what: "Area", prev: wi1.areaPath || "", next: wi2.areaPath || "" }) }
-    if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push({ what: "Iteration", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" }) }
-    if (wi1.description !== wi2.description) { fieldChanges.push({ what: "Description", prev: wi1.description || "", next: wi2.description || "" }) }
-    if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" }) }
-    if (wi1.tags !== wi2.tags) { fieldChanges.push({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" }) }
-    // if (wi1.backlogPriority !== wi2.backlogPriority) { fieldChanges.push(getSomeFieldChange("Backlog Priority", w => w.backlogPriority, wi1, wi2)) }
+    function conv(old: any): HuddleSlidePill {
+        return {
+            text: old.what,
+            color: undefined,
+            iconProps: { iconName: "Edit" },
+            message: <FieldChange prev={old.prev} next={old.next} />
+        }
+    }
+    let fieldChanges: HuddleSlidePill[] = []
+    if (wi1.title !== wi2.title) { fieldChanges.push(conv({ what: "Title", prev: wi1.title, next: wi2.title })) }
+    if (wi1.state !== wi2.state) { fieldChanges.push(conv({ what: "State", prev: wi1.state || "", next: wi2.state || "" })) }
+    if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push(conv({ what: "Area", prev: wi1.areaPath || "", next: wi2.areaPath || "" })) }
+    if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push(conv({ what: "Iteration", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" })) }
+    if (wi1.description !== wi2.description) { fieldChanges.push(conv({ what: "Description", prev: wi1.description || "", next: wi2.description || "" })) }
+    if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push(conv({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" })) }
+    if (wi1.tags !== wi2.tags) { fieldChanges.push(conv({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" })) }
     if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
     if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", dateFormatter(w => w.startDate), wi1, wi2)) }
     if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", dateFormatter(w => w.targetDate), wi1, wi2)) }
-    if (wi1.parent !== wi2.parent) { fieldChanges.push(getParentFieldChange(wi1, wi2)) }
+    if (wi1.parent !== wi2.parent) { fieldChanges.push(getSomeFieldChange("Parent", w => w.parent === undefined ? undefined : `#${w.parent}`, wi1, wi2)) }
     if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push(getSomeFieldChange("Type", w => w.workItemType, wi1, wi2)) }
     if ((wi1.comments?.length || -1) !== (wi2.comments?.length || -1)) { fieldChanges.push(getCommentFieldChange(wi1, wi2)) }
 
@@ -206,7 +205,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
     } else if (p1 > p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
-            message: `Moved up from ${p1 + 1} to ${p2 + 1}`,
+            message: <div>Moved up from {p1 + 1} to {p2 + 1}</div>,
             color: { red: 0, green: 0x99, blue: 0x99 },
             iconProps: {
                 iconName: "Up"
@@ -215,7 +214,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
     } else if (p1 < p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
-            message: `Moved down from ${p1 + 1} to ${p2 + 1}`,
+            message: <div>Moved down from {p1 + 1} to {p2 + 1}</div>,
             color: { red: 0, green: 0x99, blue: 0x99 },
             iconProps: {
                 iconName: "Down"
@@ -230,12 +229,12 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
             type: "update",
             id: wi2.id,
             title: wi2.title,
-            fieldChanges: fieldChanges,
             workItemType: wi2.workItemType || "unknown",
             workItem: wi2,
             pills: [
                 ...priorityPills,
                 ...createPillsList(wi2, state),
+                ...fieldChanges,
             ],
         })
     } else {
@@ -243,7 +242,6 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
             type: "same",
             id: wi2.id,
             title: wi2.title,
-            fieldChanges: [],
             workItemType: wi2.workItemType || "unknown",
             workItem: wi2,
             pills: [
@@ -260,7 +258,6 @@ function createFinalSlide(wi1: Db.WorkItemSnapshot, state: ReducerState): Huddle
         type: "final",
         id: wi1.id,
         title: wi1.title,
-        fieldChanges: [],
         workItemType: wi1.workItemType || "unknown",
         workItem: wi1,
         pills: createPillsList(wi1, state)
@@ -283,13 +280,13 @@ function createPillsList(wi: Db.WorkItemSnapshot, state: ReducerState): HuddleSl
                 green: 0,
                 blue: 0,
             },
-            message: `Target date was ${Util.msecToDate(targetDateMsec).toLocaleDateString()}`
+            message: <div>Target date was {Util.msecToDate(targetDateMsec).toLocaleDateString()}</div>
         })
     }
     return pills;
 }
 
-function getSomeFieldChange(what: string, prop: (wi: Db.WorkItemSnapshot) => any | undefined, wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+function getSomeFieldChange(what: string, prop: (wi: Db.WorkItemSnapshot) => string | undefined, wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlidePill {
     let s1: string = ""
     let s2: string = ""
 
@@ -306,30 +303,15 @@ function getSomeFieldChange(what: string, prop: (wi: Db.WorkItemSnapshot) => any
         s2 = "(not set)"
     }
 
-    return { what: what, prev: s1, next: s2 }
+    return {
+        text: what,
+        color: undefined,
+        iconProps: { iconName: "Edit" },
+        message: <FieldChange prev={s1} next={s2} />
+    }
 }
 
-function getParentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
-    let s1: string = ""
-    let s2: string = ""
-
-    if (wi1.parent) {
-        s1 = `#${wi1.parent}`
-    } else {
-        s1 = "(not set)"
-    }
-
-    if (wi2.parent) {
-        s2 = `#${wi2.parent}`
-
-    } else {
-        s2 = "(not set)"
-    }
-
-    return { what: "System.Parent", prev: s1, next: s2 }
-}
-
-function getCommentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlideFieldChange {
+function getCommentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot): HuddleSlidePill {
     let s1: string = ""
     let s2: string = ""
 
@@ -346,7 +328,12 @@ function getCommentFieldChange(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapsho
         s2 = "0"
     }
 
-    return { what: "System.CommentCount", prev: s1, next: s2 }
+    return {
+        text: "Comments",
+        color: undefined,
+        iconProps: { iconName: "Edit" },
+        message: <FieldChange prev={s1} next={s2} />
+    }
 }
 
 function HuddleSessionPage(p: HuddleSessionPageProps) {
@@ -445,7 +432,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             }
         }
 
-        // TODO: PERSIST ALL CHANGES TO HUDDLE SESSION
         console.log("Snapshot1:", snapShot1)
         console.log("Snapshot2:", snapShot2)
         dispatch({
@@ -612,7 +598,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         items.sort(Db.sortWorkItemSnapshots)
 
-        // TODO: produce snapshot
         return {
             workitems: {
                 items: items
@@ -622,18 +607,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     async function poll() {
         console.log("HuddleSessionPage poll", state);
-    }
-
-    async function fetchWorkItemDetails(slide: HuddleSlide) {
-        let wid = slide.id
-        let aaa = await Azdo.getWorkItemUpdates(wid, p.session)
-        console.log("fetchWorkItemDetails", slide, aaa)
-        dispatch({
-            workitemRevisions: {
-                id: wid,
-                revs: aaa.value,
-            }
-        })
     }
 
     function onSelectSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
@@ -646,9 +619,18 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         if (state.huddleGraph && selectedSlide >= 0 && selectedSlide < state.huddleGraph.slides.length) {
             let slide = state.huddleGraph.slides[selectedSlide]
             fetchWorkItemDetails(slide)
-        }
 
-        fetchWorkItemDetails
+            async function fetchWorkItemDetails(slide: HuddleSlide) {
+                let wid = slide.id
+                let aaa = await Azdo.getWorkItemUpdates(wid, p.session)
+                dispatch({
+                    workitemRevisions: {
+                        id: wid,
+                        revs: aaa.value,
+                    }
+                })
+            }
+        }
     }
 
     function onActivateSlide(_event: React.SyntheticEvent<HTMLElement, Event>, listRow: IListRow<HuddleSlide>) {
@@ -686,7 +668,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return <PillGroup className="flex-row" overflow={PillGroupOverflow.fade}>
             {renderPillForSlideType(item)}
             {(item.pills) && (item.pills.map(p => renderPillListItem(p)))}
-            {(item.fieldChanges) && (item.fieldChanges.map(fc => renderPillForFieldChange(fc)))}
         </PillGroup>
     }
 
@@ -730,23 +711,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     function renderPillListItem(p: HuddleSlidePill) {
         return <Pill variant={PillVariant.themedStandard} color={p.color} iconProps={p.iconProps}>{p.text || ""}</Pill>
-    }
-
-    function renderPillForFieldChange(fc: HuddleSlideFieldChange) {
-        let what: string = (() => {
-            switch (fc.what) {
-                case "System.State": return "State"
-                case "System.Title": return "Title"
-                case "System.Description": return "Description"
-                case "System.AreaPath": return "Area"
-                case "System.IterationPath": return "Iteration"
-                case "System.CommentCount": return "Comments"
-                case "System.Parent": return "Parent"
-                default: return fc.what
-            }
-        })();
-
-        return <Pill variant={PillVariant.themedStandard} iconProps={{ iconName: "Edit" }} >{what}</Pill>
     }
 
     function renderSlideListItem(rowIndex: number, item: HuddleSlide, details: IListItemDetails<HuddleSlide>, key?: string) {
@@ -871,16 +835,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                                 )
                             })
                         }
-                        {
-                            slide.fieldChanges.map(c => {
-                                return (
-                                    <div className='flex-row flex-center rhythm-horizontal-8'>
-                                        <div className=''>{renderPillForFieldChange(c)}</div>
-                                        <FieldChange prev={c.prev} next={c.next} />
-                                    </div>
-                                )
-                            })
-                        }
                     </div>
                 </Card>
             </div>
@@ -938,11 +892,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                                     let rd2 = rd1 && Util.msecFromISO(rd1)
                                     let rd3 = rd2 && Util.msecToDate(rd2)
                                     let rd4 = rd3 && rd3.toLocaleDateString()
-                                    let rd5 = rd2 && Luxon.DateTime.fromMillis(rd2).toRelative()
+                                    let rd5 = rd2 && Util.msecToRelative(rd2)
 
                                     let td1 = rev.fields?.["Microsoft.VSTS.Scheduling.TargetDate"]?.newValue
                                     let td2 = td1 && Util.msecFromISO(td1)
-                                    let td3 = td2 && Util.msecToDate(td2).toLocaleDateString()
+                                    let td3 = td2 && Util.msecToDateString(td2)
 
                                     let ip1 = rev.fields?.['System.IterationPath']?.newValue
                                     return (
