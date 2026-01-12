@@ -8,6 +8,7 @@
 // TODO: show "state" on slide content
 // TODO: quick buttons for changing target date to next cycle(s)
 // TODO: quick button to set start date to current sprint (and activate it?)
+// TODO: work item states depend on project definition, and need to be fetched dynamically
 
 import * as SDK from 'azure-devops-extension-sdk';
 
@@ -739,8 +740,10 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     }
 
     function renderSlideListItem(rowIndex: number, item: HuddleSlide, details: IListItemDetails<HuddleSlide>, key?: string) {
+        let opacityClassName: string = ""
+        if (item.workItem.state === "New") { opacityClassName = "opacity-50"}
         return (
-            <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details}>
+            <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details} className={opacityClassName}>
                 <div className="list-example-row flex-row padding-4 rhythm-horizontal-8 scroll-hidden">
                     <div className="flex-column rhythm-vertical-4 scroll-hidden">
                         {renderWorkItemHeader(item, "font-size-ms scroll-hidden")}
