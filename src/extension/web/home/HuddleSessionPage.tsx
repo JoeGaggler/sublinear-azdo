@@ -293,17 +293,17 @@ function createPillsList(wi: Db.WorkItemSnapshot, state: ReducerState): HuddleSl
     }
 
     // No Start
-    if (wi.startDate === undefined) {
-        let s = wi.state
-        if (s === "In Progress") {
+    let s = wi.state
+    if (s === "In Progress") {
+        if (wi.startDate === undefined || wi.targetDate === undefined) {
             pills.push({
-                text: "Started?",
+                text: "Dates",
                 color: {
                     red: 0xcc,
                     green: 0x66,
                     blue: 0,
                 },
-                message: <div>Missing start date</div>
+                message: <div>Active work must have a start date and target date.</div>
             })
         }
     }
