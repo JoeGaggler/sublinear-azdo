@@ -1,6 +1,13 @@
 // TODO: show removed in its original location for fewer up/down indicators:
 // - no diff for current session
 // - future session filters out "removed", so relative positions will match
+// TODO: flag when a child has an issue
+// TODO: allow "throwing a flag" during a huddle
+// TODO: show new comment content
+// TODO: add filters to slides
+// TODO: show "state" on slide content
+// TODO: quick buttons for changing target date to next cycle(s)
+// TODO: quick button to set start date to current sprint (and activate it?)
 
 import * as SDK from 'azure-devops-extension-sdk';
 
@@ -188,7 +195,7 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
     if (wi1.description !== wi2.description) { fieldChanges.push(conv({ what: "Description", prev: wi1.description || "", next: wi2.description || "" })) }
     if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push(conv({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" })) }
     if (wi1.tags !== wi2.tags) { fieldChanges.push(conv({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" })) }
-    if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
+    // if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
     if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", dateFormatter(w => w.startDate), wi1, wi2)) }
     if (wi1.targetDate !== wi2.targetDate) { fieldChanges.push(getSomeFieldChange("Target Date", dateFormatter(w => w.targetDate), wi1, wi2)) }
     if (wi1.parent !== wi2.parent) { fieldChanges.push(getSomeFieldChange("Parent", w => w.parent === undefined ? undefined : `#${w.parent}`, wi1, wi2)) }
@@ -267,6 +274,7 @@ function createFinalSlide(wi1: Db.WorkItemSnapshot, state: ReducerState): Huddle
 function createPillsList(wi: Db.WorkItemSnapshot, state: ReducerState): HuddleSlidePill[] {
     let pills: HuddleSlidePill[] = []
 
+    // Overdue
     let targetDateMsec: number | undefined = wi.targetDate ? Util.msecFromISO(wi.targetDate) : undefined
     let targetCycle = Db.getCycleForDateOrIteration(state.cycles || [], targetDateMsec, wi.iterationPath)
     if (targetCycle) {
@@ -283,6 +291,23 @@ function createPillsList(wi: Db.WorkItemSnapshot, state: ReducerState): HuddleSl
             message: <div>Target date was {Util.msecToDate(targetDateMsec).toLocaleDateString()}</div>
         })
     }
+
+    // No Start
+    if (wi.startDate === undefined) {
+        let s = wi.state
+        if (s === "In Progress") {
+            pills.push({
+                text: "Started?",
+                color: {
+                    red: 0xcc,
+                    green: 0x66,
+                    blue: 0,
+                },
+                message: <div>Missing start date</div>
+            })
+        }
+    }
+
     return pills;
 }
 
@@ -731,7 +756,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             "ms.vss-work-web.work-item-form-navigation-service"
         );
 
-        await navSvc.openWorkItem(wid, true)
+        await navSvc.openWorkItem(wid, false)
     };
 
     function getSlideBarCommandItems(slide: HuddleSlide) {
@@ -750,6 +775,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         items.push(editItem)
 
         return items;
+    }
+
+    function renderWorkItemState(slide: HuddleSlide) {
+        switch (slide.workItem.state) {
+            case undefined: return <></>
+            case null: return <></>
+            default: return <>{slide.workItem.state}</>
+        }
     }
 
     function renderAssigned(slide: HuddleSlide) {
@@ -774,6 +807,27 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         }
     }
 
+    function renderPillsCard(slide: HuddleSlide) {
+        if (slide.pills.length === 0) { return <></> }
+
+        return (
+            <Card className='flex-self-start'>
+                <div className='flex-column full-width flex-start rhythm-vertical-4'>
+                    {
+                        slide.pills.map(p => {
+                            return (
+                                <div className='flex-row flex-center rhythm-horizontal-8'>
+                                    <div className=''>{renderPillListItem(p)}</div>
+                                    <div className=''>{p.message || ""}</div>
+                                </div>
+                            )
+                        })
+                    }
+                </div>
+            </Card>
+        )
+    }
+
     function renderSlideContent() {
         let slideIndex = state.selectedSlide
         let slides = state.huddleGraph?.slides
@@ -786,9 +840,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             return <></>
         }
 
-        // let s: string = `${slideIndex + 1}`
-        // let a: string = `${slides.length}`
-
         return (
             <div className='padding-left-8 full-width sticky-top-0 rhythm-vertical-8'>
                 <Header
@@ -799,6 +850,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     commandBarItems={getSlideBarCommandItems(slide)}
                 />
                 <div className='flex-column full-width flex-start rhythm-vertical-8'>
+                    <HuddleSlideField
+                        name='State'
+                        className='font-size-l'
+                        onClickHeading={() => { }}
+                    >
+                        {renderWorkItemState(slide)}
+                    </HuddleSlideField>
+
                     <HuddleSlideField
                         name='Assigned'
                         className='font-size-l'
@@ -822,21 +881,9 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     >
                         {renderCycleFromDateString(slide.workItem.targetDate, slide.workItem.iterationPath, true)}
                     </HuddleSlideField>
+
+                    {renderPillsCard(slide)}
                 </div>
-                <Card className='flex-self-start'>
-                    <div className='flex-column full-width flex-start rhythm-vertical-4'>
-                        {
-                            slide.pills.map(p => {
-                                return (
-                                    <div className='flex-row flex-center rhythm-horizontal-8'>
-                                        <div className=''>{renderPillListItem(p)}</div>
-                                        <div className=''>{p.message || ""}</div>
-                                    </div>
-                                )
-                            })
-                        }
-                    </div>
-                </Card>
             </div>
         );
     }
@@ -894,25 +941,27 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                                     let rd4 = rd3 && rd3.toLocaleDateString()
                                     let rd5 = rd2 && Util.msecToRelative(rd2)
 
-                                    let td1 = rev.fields?.["Microsoft.VSTS.Scheduling.TargetDate"]?.newValue
+                                    let td0 = rev.fields?.["Microsoft.VSTS.Scheduling.TargetDate"]
+                                    let td1 = td0 && td0.newValue
                                     let td2 = td1 && Util.msecFromISO(td1)
                                     let td3 = td2 && Util.msecToDateString(td2)
 
-                                    let ip1 = rev.fields?.['System.IterationPath']?.newValue
+                                    let ip0 = rev.fields?.['System.IterationPath']
+                                    let ip1 = ip0 && ip0.newValue
                                     return (
                                         <>
-                                            {rd4 && rd5 && td3 &&
+                                            {rd4 && rd5 && td0 &&
                                                 <div className='flex-row rhythm-horizontal-8'>
                                                     <div>{rd5}</div>
                                                     <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
-                                                    <div>{td3}</div>
+                                                    <div>{td3 || "none"}</div>
                                                 </div>
                                             }
-                                            {ip1 &&
+                                            {ip0 &&
                                                 <div className='flex-row rhythm-horizontal-8'>
                                                     <div>{rd5}</div>
                                                     <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
-                                                    <div>{ip1}</div>
+                                                    <div>{ip1 || "none"}</div>
                                                 </div>
                                             }
                                         </>
