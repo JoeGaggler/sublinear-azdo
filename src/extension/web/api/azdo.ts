@@ -154,7 +154,13 @@ export interface WorkItemPerson {
 export interface GetWorkItemResult {
     id?: number
     fields?: WorkItemFields
+    relations?: WorkItemRelation[]
     // TODO: links and relations
+}
+
+export interface WorkItemRelation {
+    rel?: string
+    url?: string
 }
 
 export interface WorkItemType {

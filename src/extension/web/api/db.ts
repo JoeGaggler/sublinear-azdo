@@ -116,6 +116,8 @@ export interface WorkItemSnapshot {
     targetDate?: string
     parent?: number
     assignedTo?: WorkItemSnapshotPerson
+    children?: number[]
+    children2?: WorkItemSnapshot[]
 
     // TEMPORARY
     assignedToDisplayName?: string

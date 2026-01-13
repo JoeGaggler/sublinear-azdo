@@ -2,6 +2,7 @@
 // - no diff for current session
 // - future session filters out "removed", so relative positions will match
 // TODO: flag when a child has an issue
+// TODO: flag when a child was started before parent
 // TODO: allow "throwing a flag" during a huddle
 // TODO: show new comment content
 // TODO: add filters to slides
@@ -194,7 +195,6 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
     if (wi1.areaPath !== wi2.areaPath) { fieldChanges.push(conv({ what: "Area", prev: wi1.areaPath || "", next: wi2.areaPath || "" })) }
     if (wi1.iterationPath !== wi2.iterationPath) { fieldChanges.push(conv({ what: "Iteration", prev: wi1.iterationPath || "", next: wi2.iterationPath || "" })) }
     if (wi1.description !== wi2.description) { fieldChanges.push(conv({ what: "Description", prev: wi1.description || "", next: wi2.description || "" })) }
-    if (wi1.workItemType !== wi2.workItemType) { fieldChanges.push(conv({ what: "Type", prev: wi1.workItemType || "", next: wi2.workItemType || "" })) }
     if (wi1.tags !== wi2.tags) { fieldChanges.push(conv({ what: "Tags", prev: wi1.tags || "", next: wi2.tags || "" })) }
     // if (wi1.reason !== wi2.reason) { fieldChanges.push(getSomeFieldChange("Reason", w => w.reason, wi1, wi2)) }
     if (wi1.startDate !== wi2.startDate) { fieldChanges.push(getSomeFieldChange("Start Date", dateFormatter(w => w.startDate), wi1, wi2)) }
@@ -561,6 +561,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         console.log("PRIORITY MAPPINGS", priorityMappings)
 
+        let childWids: number[] = []
         let mainBatch = metaBatches[0]
         for (let wi of mainBatch) {
             let wid = wi.id
@@ -575,6 +576,25 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
             // Assigned
             let assignedTo = wif['System.AssignedTo']
+
+            let myChildWids: number[] = []
+            let links = wi.relations
+            if (links) {
+                for (let link of links) {
+                    if (link.rel === "System.LinkTypes.Hierarchy-Forward" && link.url) {
+                        console.log("CHILD!", link, wi)
+                        let prefix = '_apis/wit/workItems/'
+                        let idx = link.url.lastIndexOf(prefix)
+                        if (idx !== -1) {
+                            let childIdString = link.url.substring(idx + prefix.length)
+                            let childId = parseInt(childIdString)
+                            console.log("CHILD3!", link, childId)
+                            childWids.push(childId)
+                            myChildWids.push(childId)
+                        }
+                    }
+                }
+            }
 
             items.push({
                 id: wid,
@@ -599,7 +619,14 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                         name: assignedTo.displayName,
                         imageUrl: assignedTo.imageUrl
                     }) : undefined,
+                children: myChildWids,
             })
+        }
+
+        let childBatch: Azdo.GetWorkItemResult[] = []
+        if (childWids.length > 0) {
+            childBatch = await Azdo.getWorkItemBatchWithChunks(childWids, null, asOf, session)
+            console.log("getSnapshot childBatch", level, childBatch.length, childBatch)
         }
 
         function findSiblings(pid: number | undefined): Db.WorkItemSnapshot[] {
@@ -620,6 +647,40 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             let sibs = findSiblings(pid)
             let rp = sibs.findIndex(i => i.id == wid)
             item.relativePriority = (rp == -1) ? undefined : rp
+            for (let cid of (item.children || [])) {
+                let child = childBatch.find(v => v.id === cid)
+                if (!child) { continue; }
+                let cs = child.fields?.['System.State']
+                if (cs === "In Progress" && item.state !== "In Progress") {
+                    console.log("CHILD IN PROGRESS 2:", child, item)
+                }
+            }
+            item.children2 = (item.children || []).flatMap((wid): Db.WorkItemSnapshot | readonly Db.WorkItemSnapshot[] => {
+                let wi = childBatch.find(v => v.id === wid)
+                let wif = wi?.fields
+                if (!wif) { return [] }
+                return {
+                    id: wid,
+                    title: wif['System.Title'] || "",
+                    priority: wif['Microsoft.VSTS.Common.Priority'] || Number.MAX_SAFE_INTEGER,
+                    state: wif['System.State'],
+                    areaPath: wif['System.AreaPath'],
+                    iterationPath: wif['System.IterationPath'],
+                    comments: [],
+                    parent: wif['System.Parent'],
+                    description: wif['System.Description'],
+                    workItemType: wif['System.WorkItemType'],
+                    tags: wif['System.Tags'],
+                    backlogPriority: wif['Microsoft.VSTS.Common.BacklogPriority'],
+                    backlogPriorities: getPriorityMapping(wid),
+                    startDate: wif['Microsoft.VSTS.Scheduling.StartDate'],
+                    targetDate: wif['Microsoft.VSTS.Scheduling.TargetDate'],
+                    reason: wif['System.Reason'],
+                    assignedTo: undefined,
+                    children: undefined,
+                }
+            })
+            console.log("CHILDREN 2:", wid, item.children2)
         }
 
         items.sort(Db.sortWorkItemSnapshots)
@@ -715,17 +776,16 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
     function renderWorkItemHeader(item: HuddleSlide, className: string = ""): JSX.Element {
         return (
             <div className={`flex-row flex-center rhythm-horizontal-4 ${className}`}>
-                {renderIconForWorkItemType(item)}
+                {renderIconForWorkItemType(item.workItemType || "unknown")}
                 <div className="font-weight-semibold">{item.id}</div>
                 <div className="secondary-text text-ellipsis">{item.title}</div>
             </div>
         )
     }
 
-    function renderIconForWorkItemType(item: HuddleSlide) {
+    function renderIconForWorkItemType(workItemType: string) {
         let availableWorkItemTypes = state.availableWorkItemTypes
-        let wit = item.workItemType || "unknown";
-        let wit2 = availableWorkItemTypes.findIndex(i => i.name === wit);
+        let wit2 = availableWorkItemTypes.findIndex(i => i.name === workItemType);
         let wit3 = (wit2 === -1) ? undefined : availableWorkItemTypes[wit2].icon
         if (wit3 && wit3.url) {
             return <Icon render={() => {
@@ -741,7 +801,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
     function renderSlideListItem(rowIndex: number, item: HuddleSlide, details: IListItemDetails<HuddleSlide>, key?: string) {
         let opacityClassName: string = ""
-        if (item.workItem.state === "New") { opacityClassName = "opacity-50"}
+        if (item.workItem.state === "New") { opacityClassName = "opacity-50" }
         return (
             <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details} className={opacityClassName}>
                 <div className="list-example-row flex-row padding-4 rhythm-horizontal-8 scroll-hidden">
@@ -831,6 +891,34 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         )
     }
 
+    function renderChildrenCard(slide: HuddleSlide) {
+        let cc = slide.workItem.children2
+        if (!cc || cc?.length === 0) { return <></> }
+
+        return (
+            <Card className='flex-self-start'>
+                <div className='flex-column full-width flex-start rhythm-vertical-4'>
+                    <div className='font-size-ml'>Child items:</div>
+                    {
+                        cc.flatMap(p => {
+                            if (p.state === "Removed") { return [] }
+                            let className = p.state === "In Progress" ? '' : 'opacity-50'
+                            className = className + ' ' + (p.state === "Done" ? 'strikethrough-text' : '')
+                            return (
+                                <div className={`flex-row flex-center rhythm-horizontal-8 ${className}`}>
+                                    <div className=''>{renderIconForWorkItemType(p.workItemType || "unknown")}</div>
+                                    <div className=''>{p.id}</div>
+                                    <div className=''>{p.title}</div>
+                                    {/* <div className=''>{p.state}</div> */}
+                                </div>
+                            )
+                        })
+                    }
+                </div>
+            </Card>
+        )
+    }
+
     function renderSlideContent() {
         let slideIndex = state.selectedSlide
         let slides = state.huddleGraph?.slides
@@ -886,6 +974,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     </HuddleSlideField>
 
                     {renderPillsCard(slide)}
+                    {renderChildrenCard(slide)}
                 </div>
             </div>
         );
