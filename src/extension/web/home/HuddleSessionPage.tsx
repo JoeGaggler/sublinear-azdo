@@ -298,7 +298,7 @@ function createPillsList(wi: Db.WorkItemSnapshot, state: ReducerState): HuddleSl
     // No Start
     let s = wi.state
     if (s === "In Progress") {
-        if (wi.startDate === undefined || wi.targetDate === undefined) {
+        if (wi.startDate === undefined || (wi.targetDate === undefined && wi.iterationPath === undefined)) {
             pills.push({
                 text: "Dates",
                 color: {
