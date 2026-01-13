@@ -40,6 +40,7 @@ import PersonaField from '../controls/PersonaField.tsx';
 import HuddleSlideField from '../controls/HuddleSlideField.tsx';
 import TargetDatePanel from '../controls/TargetDatePanel.tsx';
 import FieldChange from '../controls/FieldChange.tsx';
+import WorkItemTitle from '../controls/WorkItemTitle.tsx';
 
 interface HuddleGraph {
     slides: HuddleSlide[]
@@ -773,28 +774,6 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         return <Pill variant={PillVariant.themedStandard} iconProps={{ iconName: what.iconName }} >{what.text}</Pill>
     }
 
-    function renderWorkItemHeader(item: HuddleSlide, className: string = ""): JSX.Element {
-        return (
-            <div className={`flex-row flex-center rhythm-horizontal-4 ${className}`}>
-                {renderIconForWorkItemType(item.workItemType || "unknown")}
-                <div className="font-weight-semibold">{item.id}</div>
-                <div className="secondary-text text-ellipsis">{item.title}</div>
-            </div>
-        )
-    }
-
-    function renderIconForWorkItemType(workItemType: string) {
-        let availableWorkItemTypes = state.availableWorkItemTypes
-        let wit2 = availableWorkItemTypes.findIndex(i => i.name === workItemType);
-        let wit3 = (wit2 === -1) ? undefined : availableWorkItemTypes[wit2].icon
-        if (wit3 && wit3.url) {
-            return <Icon render={() => {
-                return <img src={wit3.url} width={16} height={16} />
-            }} />
-        }
-        else { return <></> }
-    }
-
     function renderPillListItem(p: HuddleSlidePill) {
         return <Pill variant={PillVariant.themedStandard} color={p.color} iconProps={p.iconProps}>{p.text || ""}</Pill>
     }
@@ -806,7 +785,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             <ListItem key={key || "list-item" + rowIndex} index={rowIndex} details={details} className={opacityClassName}>
                 <div className="list-example-row flex-row padding-4 rhythm-horizontal-8 scroll-hidden">
                     <div className="flex-column rhythm-vertical-4 scroll-hidden">
-                        {renderWorkItemHeader(item, "font-size-ms scroll-hidden")}
+                        <WorkItemTitle text={item.title} id={item.id} type={item.workItemType} allTypes={state.availableWorkItemTypes} />
                         <div className='margin-left-16'>{renderPillGroup(item)}</div>
                     </div>
                 </div>
@@ -905,12 +884,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                             let className = p.state === "In Progress" ? '' : 'opacity-50'
                             className = className + ' ' + (p.state === "Done" ? 'strikethrough-text' : '')
                             return (
-                                <div className={`flex-row flex-center rhythm-horizontal-8 ${className}`}>
-                                    <div className=''>{renderIconForWorkItemType(p.workItemType || "unknown")}</div>
-                                    <div className=''>{p.id}</div>
-                                    <div className=''>{p.title}</div>
-                                    {/* <div className=''>{p.state}</div> */}
-                                </div>
+                                <WorkItemTitle text={p.title} id={p.id} type={p.workItemType} allTypes={state.availableWorkItemTypes} className={className} />
                             )
                         })
                     }
@@ -935,7 +909,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
             <div className='padding-left-8 full-width sticky-top-0 rhythm-vertical-8'>
                 <Header
                     titleIconProps={undefined}
-                    title={renderWorkItemHeader(slide, "font-size-l")}
+                    title={<WorkItemTitle className="font-size-l" text={slide.title} id={slide.id} type={slide.workItemType} allTypes={state.availableWorkItemTypes} />}
                     titleSize={TitleSize.Medium}
                     contentClassName='flex-center'
                     commandBarItems={getSlideBarCommandItems(slide)}
@@ -994,12 +968,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         })
     }
 
-    // const [selection] = React.useState(new ListSelection({ selectOnFocus: false }));
     let selection = new ListSelection(true)
-    // const [itemProvider] = React.useState(new ArrayItemProvider(sampleDate));
     let itemProvider = new ArrayItemProvider(state.huddleGraph?.slides || [])
-
-    // const [selectedItemObservable] = React.useState(new ObservableValue<string>(sampleDate[0]));
 
     return (
         <Page className='full-height'>
