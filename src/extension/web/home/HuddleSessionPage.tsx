@@ -29,7 +29,7 @@ import { SingleLayerMasterPanel } from "azure-devops-ui/MasterDetails";
 // import { SingleLayerMasterPanelHeader } from "azure-devops-ui/Components/SingleLayerMasterPanel/SingleLayerMasterPanel";
 import { ScrollableList, ListSelection, ListItem, type IListItemDetails, type IListRow } from "azure-devops-ui/List";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
-import { Icon, IconSize, type IIconProps } from 'azure-devops-ui/Icon';
+import { type IIconProps } from 'azure-devops-ui/Icon';
 import { Pill, PillVariant } from "azure-devops-ui/Pill";
 import { PillGroup, PillGroupOverflow } from "azure-devops-ui/PillGroup";
 import { Card } from "azure-devops-ui/Card";
@@ -41,6 +41,7 @@ import HuddleSlideField from '../controls/HuddleSlideField.tsx';
 import TargetDatePanel from '../controls/TargetDatePanel.tsx';
 import FieldChange from '../controls/FieldChange.tsx';
 import WorkItemTitle from '../controls/WorkItemTitle.tsx';
+import { Tooltip } from 'azure-devops-ui/TooltipEx';
 
 interface HuddleGraph {
     slides: HuddleSlide[]
@@ -841,8 +842,18 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
         if (targetCycle) {
             return <div className='flex-row rhythm-horizontal-4'>
-                <div>{targetCycle.name}</div>
-                {dateMsec && <div className='flex-row'>({Luxon.DateTime.fromMillis(dateMsec).toRelative()})</div>}
+                {
+                    targetCycle &&
+                    <div>
+                        <Tooltip text={`${Util.msecToDateString(targetCycle.startMsec)} - ${Util.msecToDateString(targetCycle.finishMsec)}`}><div>{targetCycle.name}</div></Tooltip>
+                    </div>
+                }
+                {
+                    dateMsec &&
+                    <div className='flex-row'>
+                        <Tooltip text={Util.msecToDateString(dateMsec)}><div>({Luxon.DateTime.fromMillis(dateMsec).toRelative()})</div></Tooltip>
+                    </div>
+                }
             </div>
         } else {
             return <></>
@@ -996,12 +1007,13 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                             state.workitemRevisions &&
                             state.workitemRevisions.revs
                                 .filter(rev => rev.fields?.['System.IterationPath'] || rev.fields?.["Microsoft.VSTS.Scheduling.TargetDate"])
-                                .map(rev => {
+                                .flatMap(rev => {
                                     let rd1 = rev.fields?.["System.ChangedDate"]?.newValue
                                     let rd2 = rd1 && Util.msecFromISO(rd1)
                                     let rd3 = rd2 && Util.msecToDate(rd2)
                                     let rd4 = rd3 && rd3.toLocaleDateString()
                                     let rd5 = rd2 && Util.msecToRelative(rd2)
+                                    if (!rd5) { return [] }
 
                                     let td0 = rev.fields?.["Microsoft.VSTS.Scheduling.TargetDate"]
                                     let td1 = td0 && td0.newValue
@@ -1012,20 +1024,8 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                                     let ip1 = ip0 && ip0.newValue
                                     return (
                                         <>
-                                            {rd4 && rd5 && td0 &&
-                                                <div className='flex-row rhythm-horizontal-8'>
-                                                    <div>{rd5}</div>
-                                                    <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
-                                                    <div>{td3 || "none"}</div>
-                                                </div>
-                                            }
-                                            {ip0 &&
-                                                <div className='flex-row rhythm-horizontal-8'>
-                                                    <div>{rd5}</div>
-                                                    <div className='flex-row font-weight-heavy'><Icon iconName={"Forward"} size={IconSize.medium} /></div>
-                                                    <div>{ip1 || "none"}</div>
-                                                </div>
-                                            }
+                                            {rd4 && td0 && <FieldChange prev={rd5} next={td3 || "none"} />}
+                                            {ip0 && <FieldChange prev={rd5} next={ip1 || "none"} />}
                                         </>
                                     )
                                 })
