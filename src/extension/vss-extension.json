@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "sublinear",
-  "version": "0.1.1005",
+  "version": "0.1.1092",
   "name": "Sublinear",
   "description": "Sublinear",
   "publisher": "pingmint",
@@ -68,6 +68,18 @@
           }
         }
       ]
+    },
+    {
+      "id": "sublinear-crumbs",
+      "type": "ms.vss-web.breadcrumb-provider",
+      "targets": [
+        ".home"
+      ],
+      "properties": {
+        "serviceName": "sublinear-crumbs",
+        "breadcrumbId": "ms.vss-tfs-web.vertical-header-breadcrumb",
+        "uri": "dist/web/home/crumbs.html"
+      }
     }
   ],
   "scopes": [

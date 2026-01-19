@@ -10,6 +10,7 @@
 // TODO: quick buttons for changing target date to next cycle(s)
 // TODO: quick button to set start date to current sprint (and activate it?)
 // TODO: work item states depend on project definition, and need to be fetched dynamically
+// TODO: pinned huddle slide notes 
 
 import * as SDK from 'azure-devops-extension-sdk';
 
@@ -413,7 +414,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         huddleSession.created = created
         console.log("HuddleSessionPage: huddle session", huddleSession, created);
         dispatch({
-            title: `${huddle?.name || ""} Session - ${Util.msecToDate(created).toLocaleDateString()}`,
+            title: `${huddle?.name || ""} Huddle - ${Util.msecToDate(created).toLocaleDateString()}`,
             created: created,
             availableWorkItemTypes: t.value,
         })
@@ -943,15 +944,15 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
                     </HuddleSlideField>
 
                     <HuddleSlideField
-                        name='Start Date'
+                        name='Start Cycle'
                         className='font-size-l'
                         onClickHeading={() => { }}
                     >
-                        {renderCycleFromDateString(slide.workItem.startDate)}
+                        {renderCycleFromDateString(slide.workItem.startDate, slide.workItem.iterationPath, false)}
                     </HuddleSlideField>
 
                     <HuddleSlideField
-                        name='Target Date'
+                        name='Target Cycle'
                         className='font-size-l'
                         onClickHeading={() => { dispatch({ activePanelName: "target_date" }) }}
                     >

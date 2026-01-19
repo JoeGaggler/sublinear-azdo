@@ -145,8 +145,8 @@ function HuddlePage(p: HuddlePageProps) {
         // TODO: only if config is valid
         let startItem: IHeaderCommandBarItem = {
             id: "startSession",
-            text: "Start Session",
-            iconProps: { iconName: "Play" },
+            text: "Start Huddle",
+            iconProps: { iconName: "ProFootball" },
             onActivate: () => { startSession(); },
             isPrimary: true,
             important: true,

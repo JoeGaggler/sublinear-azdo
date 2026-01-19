@@ -27,10 +27,6 @@ function HomePage(p: HomePageProps) {
         });
     }
 
-    async function purgeAllDocuments() {
-        Azdo.purgeAllDocuments(p.sessionInfo);
-    }
-
     return (
         <Page>
             <Header
@@ -44,11 +40,6 @@ function HomePage(p: HomePageProps) {
                         <Button
                             text={"Show Huddles"}
                             onClick={() => showHuddlesPage()}
-                        />
-                        <Button
-                            text={"Purge"}
-                            danger={true}
-                            onClick={() => purgeAllDocuments()}
                         />
                     </div>
                 </Card>
