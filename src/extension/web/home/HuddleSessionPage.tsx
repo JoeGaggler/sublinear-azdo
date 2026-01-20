@@ -213,6 +213,16 @@ function createFoundSlide(wi1: Db.WorkItemSnapshot, wi2: Db.WorkItemSnapshot, st
         // error: current snapshot should have this
     } else if (p1 === undefined) {
         // skip: previous snapshot never calculated its value
+    } else if (wi1.parent !== wi2.parent) {
+        // parent changed, so previous position is not relevant
+        priorityPills.push({
+            text: `${p2 + 1}`,
+            message: <div>Moved in at {p2 + 1}</div>,
+            color: { red: 0, green: 0x99, blue: 0x99 },
+            iconProps: {
+                iconName: "CircleFill"
+            }
+        })
     } else if (p1 > p2) {
         priorityPills.push({
             text: `${p2 + 1}`,
