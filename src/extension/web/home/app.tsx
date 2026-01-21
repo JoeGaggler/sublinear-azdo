@@ -61,15 +61,16 @@ function App(p: AppProps) {
         const query = await nav.getQueryParams();
         const hash = await nav.getHash();
         console.log("init: nav params", query, hash);
-        setRoute(
+        navTo(
             {
                 view: "huddles",
                 title: "Huddles",
-                back: {
-                    view: "home",
-                    data: "",
-                    title: "Home - Sublinear",
-                }
+                // DISABLE HOME VIEW FOR NOW
+                // back: {
+                //     view: "home",
+                //     data: "",
+                //     title: "Home - Sublinear",
+                // }
             }
         ); // TODO: route via query/hash
     }

@@ -15,7 +15,7 @@ export default defineConfig({
   build: {
     // Explicitly use LightningCSS for CSS minification so the above option applies
     cssMinify: 'lightningcss',
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         home: './web/home/index.html'
       },

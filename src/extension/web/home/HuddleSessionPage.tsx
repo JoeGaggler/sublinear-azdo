@@ -332,14 +332,14 @@ function getSomeFieldChange(what: string, prop: (wi: Db.WorkItemSnapshot) => str
     if (prop(wi1)) {
         s1 = `${prop(wi1)}`
     } else {
-        s1 = "(not set)"
+        s1 = "(none)"
     }
 
     if (prop(wi2)) {
         s2 = `${prop(wi2)}`
 
     } else {
-        s2 = "(not set)"
+        s2 = "(none)"
     }
 
     return {
