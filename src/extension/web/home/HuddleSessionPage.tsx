@@ -499,6 +499,7 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
         let metaBatches: Azdo.GetWorkItemResult[][] = []
 
         let level = 0
+        let visitedIds: number[] = [...batchIds]
         while (batchIds.length > 0) {
             level = level + 1
             let currentBatchIds = batchIds
@@ -514,7 +515,11 @@ function HuddleSessionPage(p: HuddleSessionPageProps) {
 
                 let parentId = wi.fields?.['System.Parent']
                 if (parentId) {
-                    batchIds.push(parentId)
+                    let exists = visitedIds.indexOf(parentId)
+                    if (exists == -1) {
+                        batchIds.push(parentId)
+                        visitedIds.push(parentId)
+                    }
                 }
             }
         }
