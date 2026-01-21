@@ -63,7 +63,7 @@ export function chunk<T>(array: T[], size: number): Span[] {
         if (front == array.length) { break; }
         let end = front + size
         if (end > array.length) {
-            end = array.length - front;
+            end = array.length;
         }
         spans.push({
             start: front,
